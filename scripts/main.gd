@@ -43,6 +43,8 @@ var deck: Array[String] = []
 var hand: Array[String] = []
 var played: Array[String] = []
 var market := ["Passo deciso", "Conversazione brillante", "Taccuino curioso"]
+var city_state: Array = []
+var automa_failed_slots := 0
 
 func _ready() -> void:
 	rng.randomize()
@@ -216,7 +218,7 @@ func _show_menu() -> void:
 	intro.add_theme_font_size_override("font_size",17)
 	intro.add_theme_color_override("font_color",PAPER)
 	panel.add_child(intro)
-	_add_menu_button(panel,"Partita in solitario",func(): _start_game("solo",2))
+	_add_menu_button(panel,"Partita in solitario",func(): _start_game("solo",3))
 	_add_menu_button(panel,"Gioca contro 3 viaggiatori IA",func(): _start_game("ia",4))
 	_add_menu_button(panel,"Passa e gioca (2–5)",func(): _show_player_picker())
 	_add_menu_button(panel,"Multiplayer online — crea stanza",func(): _create_online_room())
@@ -255,8 +257,11 @@ func _create_online_room() -> void:
 func _start_game(selected_mode: String, count: int) -> void:
 	mode = selected_mode
 	players.clear()
+	city_state.clear()
+	for _i in CITIES.size(): city_state.append({"cafe_left":false,"cafe_right":false,"friend_left":false,"friend_right":false,"friend_tile":true})
+	automa_failed_slots = 0
 	for i in count:
-		players.append({"name":"Tu" if i == 0 else ("Automa %s" % char(945+i-1) if selected_mode in ["solo","ia"] else "Viaggiatore %s" % (i+1)), "city":0, "coins":1 if i < 2 else 2, "vp":0, "ideas":[0,0,0,0], "explore":[], "friends":0, "journal":0, "is_ai": i > 0 and selected_mode in ["solo","ia"]})
+		players.append({"name":"Tu" if i == 0 else ("Automa %s" % char(944+i) if selected_mode == "solo" else ("Viaggiatore IA %s" % i if selected_mode == "ia" else "Viaggiatore %s" % (i+1))), "city":0, "coins":1 if i < 2 else 2, "vp":5, "ideas":[0,0,0,0], "explore":[], "friends":0, "journal":0, "is_ai": i > 0 and selected_mode in ["solo","ia"], "automa_kind":i if i > 0 and selected_mode == "solo" else 0})
 	deck = ["Viaggio","Viaggio","Amicizia","Amicizia","Ispirazione","Ispirazione","Festività"]
 	rng.shuffle(deck)
 	hand = deck.duplicate()
@@ -346,20 +351,76 @@ func _city_selected(index: int) -> void:
 
 func _ai_turn() -> void:
 	if players.is_empty() or not players[current_player].is_ai: return
-	var choices := ACTIONS.duplicate()
+	var choices := ["Viaggio","Amicizia","Ispirazione"]
 	var action: String = choices[rng.randi_range(0,choices.size()-1)]
 	var p: Dictionary = players[current_player]
+	if int(p.automa_kind) == 0:
+		_ai_player_turn(p)
+		return
 	match action:
 		"Viaggio":
-			if p.city < CITIES.size()-1: p.city += 1
-			if p.city not in p.explore: p.explore.append(p.city)
-			p.vp += 2
+			if int(p.automa_kind) == 1:
+				_automa_explore(p)
+				_automa_move(p)
+			else:
+				_automa_move(p)
+				_automa_explore(p)
+		"Amicizia": _automa_friend(p)
+		"Ispirazione": _automa_inspiration(p)
+	_log("%s sceglie %s a %s." % [p.name,action,CITIES[p.city].name])
+	_end_turn()
+
+func _ai_player_turn(p: Dictionary) -> void:
+	var action: String = "Viaggio" if int(p.city) < CITIES.size()-1 and rng.randf() < 0.4 else ACTIONS[rng.randi_range(1,ACTIONS.size()-1)]
+	match action:
+		"Viaggio":
+			p.city += 1
+			if int(p.city) not in p.explore: p.explore.append(int(p.city)); p.vp += 1
 		"Amicizia": p.friends += 1; p.coins += 1
 		"Ispirazione": p.ideas[rng.randi_range(0,3)] += 1; p.vp += 1
 		"Festività":
-			if p.ideas.max() > 0: p.journal += 1; p.vp += 2+p.journal
+			if p.ideas.max() > 0: p.journal += 1; p.vp += 2 + int(p.journal)
 	_log("%s sceglie %s a %s." % [p.name,action,CITIES[p.city].name])
 	_end_turn()
+
+func _automa_move(p: Dictionary) -> void:
+	if int(p.city) >= CITIES.size()-1:
+		_automa_failed(p,"è già a Palermo")
+		return
+	p.city += 1
+
+func _automa_explore(p: Dictionary) -> void:
+	if int(p.city) == CITIES.size()-1 or p.explore.size() >= 3:
+		_automa_failed(p,"non può esplorare")
+		return
+	p.explore.append(int(p.city))
+
+func _automa_inspiration(p: Dictionary) -> void:
+	var state: Dictionary = city_state[int(p.city)]
+	var key := "cafe_left" if int(p.automa_kind) == 1 else "cafe_right"
+	if bool(state[key]):
+		_automa_failed(p,"trova il caffè occupato")
+	else:
+		state[key] = true
+
+func _automa_friend(p: Dictionary) -> void:
+	var state: Dictionary = city_state[int(p.city)]
+	if int(p.automa_kind) == 1:
+		if not bool(state.friend_left): state.friend_left = true
+		elif bool(state.friend_tile): state.friend_tile = false
+		elif not bool(state.friend_right): state.friend_right = true
+		else: _automa_failed(p,"non trova spazi Amicizia")
+	else:
+		if not bool(state.friend_right): state.friend_right = true
+		elif bool(state.friend_tile): state.friend_tile = false
+		elif not bool(state.friend_left): state.friend_left = true
+		else: _automa_failed(p,"non trova spazi Amicizia")
+
+func _automa_failed(p: Dictionary, reason: String) -> void:
+	automa_failed_slots = (automa_failed_slots % 5) + 1
+	var level := 2 if automa_failed_slots in [1,3] else 3
+	if not market.is_empty(): market.remove_at(min(market.size()-1,level-1))
+	_log("%s: azione fallita (%s). Spazio %s, rimossa una carta Mercato di livello %s." % [p.name,reason,automa_failed_slots,level])
 
 func _end_turn() -> void:
 	current_player += 1
@@ -370,7 +431,8 @@ func _end_turn() -> void:
 
 func _end_round() -> void:
 	for p in players:
-		if p.city == 7: p.vp += 3
+		if int(p.automa_kind) == 0 and p.city == 7: p.vp += 3
+		if int(p.automa_kind) > 0: p.explore.clear()
 	_log("[color=#c89b45]Fine round %s: mercato e viaggiatori illustri risolti.[/color]" % round_no)
 	if round_no >= 5:
 		_finish_game(); return
@@ -380,6 +442,9 @@ func _end_round() -> void:
 
 func _finish_game() -> void:
 	for p in players:
+		if int(p.automa_kind) > 0:
+			p.vp = 0
+			continue
 		var exploration_score: int = [0,1,2,3,4,6,9,13,18][min(p.explore.size(),8)]
 		p.vp += exploration_score + p.journal * (p.journal+1)/2 + p.friends
 	players.sort_custom(func(a,b): return a.vp > b.vp)
@@ -394,14 +459,14 @@ func _finish_game() -> void:
 
 func _save() -> void:
 	if players.is_empty(): return
-	var data := {"mode":mode,"room":room_code,"round":round_no,"turn":turn_no,"current":current_player,"players":players,"deck":deck,"hand":hand,"played":played}
+	var data := {"mode":mode,"room":room_code,"round":round_no,"turn":turn_no,"current":current_player,"players":players,"deck":deck,"hand":hand,"played":played,"city_state":city_state,"automa_failed_slots":automa_failed_slots}
 	firebase.salva_locale(data)
 	if mode == "online" and room_code != "": firebase.salva_cloud(room_code,data)
 
 func _continue_game() -> void:
 	var data := firebase.carica_locale()
 	if data.is_empty(): _notify("Nessuna partita salvata"); return
-	mode = data.get("mode","locale"); room_code = data.get("room",""); round_no = int(data.get("round",1)); turn_no = int(data.get("turn",1)); current_player = int(data.get("current",0)); players = data.get("players",[]); deck.assign(data.get("deck",[])); hand.assign(data.get("hand",[])); played.assign(data.get("played",[]))
+	mode = data.get("mode","locale"); room_code = data.get("room",""); round_no = int(data.get("round",1)); turn_no = int(data.get("turn",1)); current_player = int(data.get("current",0)); players = data.get("players",[]); deck.assign(data.get("deck",[])); hand.assign(data.get("hand",[])); played.assign(data.get("played",[])); city_state = data.get("city_state",[]); automa_failed_slots = int(data.get("automa_failed_slots",0))
 	clear_children(center); _layout_city_buttons(); _log("Partita ripristinata."); _refresh()
 
 func _notify(message: String) -> void:
