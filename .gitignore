@@ -1,0 +1,5 @@
+.godot/
+firebase_config.json
+build/
+.DS_Store
+
