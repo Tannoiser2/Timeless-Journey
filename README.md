@@ -26,5 +26,3 @@ godot --headless --path . --export-release Web build/web/index.html
 Il workflow GitHub Pages esporta e pubblica automaticamente il progetto a ogni push su `main`.
 
 ## Crediti e materiali
-
-Progetto digitale non ufficiale. Il gioco originale è di Nestore Mangone e Andrea Robbiani, pubblicato da Lirius Games. Non sono inclusi nel repository materiali grafici proprietari del gioco da tavolo.
