@@ -125,7 +125,10 @@ func _costruisci() -> void:
 	l_turno.clip_text = true
 	l_turno.custom_minimum_size = Vector2(160, 0)
 	hb.add_child(l_turno)
-	for v in [["citta", "Città"], ["gazzetta", "Gazzetta"], ["mercato", "Mercato"], ["diari", "Diari"]]:
+	var viste := [["citta", "Città"], ["gazzetta", "Gazzetta"], ["mercato", "Mercato"], ["diari", "Diari"]]
+	if s["esp"]["napoleone"] or s["esp"]["diodati"] or s["viaggiatori"].has("andersen"):
+		viste.append(["espansioni", "Espansioni"])
+	for v in viste:
 		var b := Stile.bottone(v[1], _vista.bind(v[0]), 20, 104)
 		b.toggle_mode = true
 		hb.add_child(b)

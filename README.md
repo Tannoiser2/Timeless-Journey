@@ -18,7 +18,7 @@ Da Torino a Palermo sulle orme dei primi turisti del Grand Tour: carte in catena
 ## Note sul materiale
 
 - La grafica viene dal modulo Tabletop Simulator. Il modulo usa una versione più vecchia delle carte: le carte 47, 50 e 54 sono state corrette (3 PV ogni 2 carte, come nel regolamento italiano), le carte 15, 16, 31, 32 e 59 dell'edizione italiana sono state composte con le icone originali, e il numero in basso a destra è quello del regolamento italiano (`tools/componi_carte.py`).
-- Il regolamento delle espansioni non riporta il testo delle carte Mostro di Villa Diodati e delle carte Azione Speciale di Andersen: nel gioco hanno effetti **provvisori** (in `tools/dati.py`, sezioni `MOSTRI` e `ANDERSEN`), da sostituire quando ci sono le carte vere. Le espansioni non hanno grafica nel modulo: le loro carte sono disegnate dal gioco.
+- Le espansioni (Mostri, Villa Diodati, carte Battaglia, carte Andersen, Viaggiatori, Pattuglie e Soldati) vengono dalle scansioni dell'edizione da collezione; le sagome dei nuovi viaggiatori sono ricavate dal ritratto delle loro carte.
 
 ## Struttura
 

@@ -25,7 +25,7 @@ func _init() -> void:
 	var gs := [{"nome": "Stefano", "colore": "rosso", "tipo": "umano"}, {"nome": "Giulia", "colore": "verde", "tipo": "ia"},
 		{"nome": "Marco", "colore": "blu", "tipo": "ia"}]
 	var esp := {"napoleone": esps.contains("n"), "diodati": esps.contains("d"), "romantici": esps.contains("r")}
-	var s := Motore.nuova({"giocatori": gs, "seme": 4242, "esp": esp, "modo_viaggiatori": "D" if esps == "" else "caso"})
+	var s := Motore.nuova({"giocatori": gs, "seme": 4242, "esp": esp, "modo_viaggiatori": "D" if esps == "" else "caso", "viaggiatori": ["andersen", "napoleone", "liszt"] if esps != "" else []})
 	main._gioca(s, "locale", 0)
 	var p: Partita = main.partita
 	await create_timer(0.6).timeout
@@ -33,6 +33,9 @@ func _init() -> void:
 	if a.size() >= 5 and a[4] == "breve":
 		p._vista("gazzetta")
 		await _foto(dir, "2_gazzetta")
+		if esps != "":
+			p._vista("espansioni")
+			await _foto(dir, "2_espansioni")
 		p._cambia_3d()
 		await create_timer(0.5).timeout
 		await _foto(dir, "2_3d")

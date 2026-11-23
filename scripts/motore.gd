@@ -40,7 +40,7 @@ static func info(id: String) -> Dictionary:
 	var D := Dati.d()
 	if p[0] == "a":
 		var c: Dictionary = D["avanzate"][p[1]]
-		return {"tipo": "a", "num": int(p[1]), "cat": c["cat"], "eff": c["eff"], "liv": int(c["liv"]),
+		return {"tipo": "a", "num": int(p[1]), "cat": c["cat"], "cats": [c["cat"]], "eff": c["eff"], "liv": int(c["liv"]),
 			"pv": int(c["pv"]), "cond": c["cond"], "img": "res://assets/img/carte/av_%02d.webp" % int(p[1])}
 	if p[0] == "b":
 		var col := p[1]
@@ -49,12 +49,13 @@ static func info(id: String) -> Dictionary:
 		var eff: Array = b["eff"]
 		if int(b["img"]) == 5:
 			eff = D["idea_colore"][col]
-		return {"tipo": "b", "num": 0, "cat": b["cat"], "eff": eff, "liv": 0, "pv": 0, "cond": null,
+		return {"tipo": "b", "num": 0, "cat": b["cat"], "cats": [b["cat"]], "eff": eff, "liv": 0, "pv": 0, "cond": null,
 			"img": "res://assets/img/carte/base_%s_%d.webp" % [col, int(b["img"])], "nome": b["nome"]}
 	# carta Andersen
 	var k2 := int(p[1])
 	var an: Dictionary = D["andersen"][k2]
-	return {"tipo": "n", "num": 0, "cat": an["cat"], "eff": an["eff"], "liv": 0, "pv": 0, "cond": null, "img": "",
+	return {"tipo": "n", "num": 0, "cat": an["cat"], "cats": an.get("cats", [an["cat"]]), "eff": an["eff"], "liv": 0, "pv": 0, "cond": null,
+		"img": "res://assets/img/espansioni/andersen_%d.webp" % k2,
 		"nome": an["nome"]}
 
 static func nome_carta(id: String) -> String:
@@ -62,7 +63,10 @@ static func nome_carta(id: String) -> String:
 	if i["tipo"] == "a":
 		return "Carta %d (%s, livello %s)" % [i["num"], Dati.CATEGORIE[i["cat"]], ["", "I", "II", "III"][i["liv"]]]
 	if i["tipo"] == "n":
-		return "Andersen: " + i["nome"]
+		var cn: Array = []
+		for c in i["cats"]:
+			cn.append(Dati.CATEGORIE[c])
+		return "Carta Andersen (%s)" % " e ".join(cn)
 	return "%s (%s)" % [i["nome"], Dati.CATEGORIE[i["cat"]]]
 
 # ============================================================================ testi degli effetti
@@ -96,7 +100,7 @@ static func testo_eff(eff) -> String:
 	if e.has("scrivi"):
 		var n2 := int(e["scrivi"])
 		return "Scrivi nel Diario" if n2 == 1 else "Scrivi %d volte%s" % [n2, " in Diari diversi" if e.get("diversi", false) else ""]
-	if e.has("discuti"): return "Discuti al caffè" + (" in qualsiasi città" if e.get("ovunque", false) else "")
+	if e.has("discuti"): return "Discuti al caffè" + (" in qualsiasi città" if e.get("ovunque", false) else "") + (" con 1 Idea in meno" if int(e.get("sconto_idea", 0)) > 0 else "")
 	if e.has("compra"):
 		var t2 := "Compra una carta"
 		if int(e.get("sconto", 0)) > 0: t2 += " (sconto %d)" % int(e["sconto"])
@@ -338,9 +342,10 @@ static func spazio_disponibile(s: Dictionary, col: int, r: int) -> bool:
 static func categorie_round(s: Dictionary, p: int) -> Array:
 	var cats: Array = []
 	for a in g(s, p)["area"]:
-		var k: String = "giu" if a["giu"] else info(a["id"])["cat"]
-		if not cats.has(k):
-			cats.append(k)
+		var ks: Array = ["giu"] if a["giu"] else info(a["id"])["cats"]
+		for k in ks:
+			if not cats.has(k):
+				cats.append(k)
 	return cats
 
 static func idee_scritte(gg: Dictionary) -> int:
@@ -1022,8 +1027,9 @@ static func _effetto(s: Dictionary, p: int, e: Dictionary) -> void:
 		return
 	if e.has("discuti"):
 		var dove = e.get("dove", "")
-		if _opz_discuti(s, p, e.get("ovunque", false), dove).size() > 1:
-			_attendi(s, p, "discuti", {"ovunque": e.get("ovunque", false), "dove": dove})
+		var sci: int = int(e.get("sconto_idea", 0))
+		if _opz_discuti(s, p, e.get("ovunque", false), dove, sci).size() > 1:
+			_attendi(s, p, "discuti", {"ovunque": e.get("ovunque", false), "dove": dove, "sconto": sci})
 		return
 	if e.has("compra"):
 		var par := {"sconto": int(e.get("sconto", 0)), "risolvi": e.get("risolvi", false)}
@@ -1137,7 +1143,7 @@ static func opzioni(s: Dictionary) -> Array:
 		"esperienza": return _opz_esperienza(s, p, int(a["col"]))
 		"lettera": return _opz_lettera(s, p, a["diverse"], a["fatte"], a["ovunque"])
 		"scrivi": return _opz_scrivi(s, p, a["usati"])
-		"discuti": return _opz_discuti(s, p, a["ovunque"], a.get("dove", ""))
+		"discuti": return _opz_discuti(s, p, a["ovunque"], a.get("dove", ""), int(a.get("sconto", 0)))
 		"compra": return _opz_compra(s, p, a)
 		"mercato": return _opz_compra(s, p, {"gratis": int(a["liv"])})
 		"scambia_idea": return _opz_scambia_idea(s, p)
@@ -1228,7 +1234,7 @@ static func _opz_catena(s: Dictionary, p: int) -> Array:
 		var a: Dictionary = gg["area"][i]
 		if a["giu"] or s["catena"]["usate"].has(i):
 			continue
-		if info(a["id"])["cat"] == cat:
+		if info(a["id"])["cats"].has(cat):
 			o.append({"id": "att:%d" % i, "testo": "Attiva " + nome_carta(a["id"]) + ": " + testo_eff(info(a["id"])["eff"]), "carta": a["id"]})
 	o += _azioni_libere(s, p, false)
 	o.append({"id": "fine", "testo": "Termina la catena"})
@@ -1393,7 +1399,7 @@ static func _opz_scrivi(s: Dictionary, p: int, usati: Array) -> Array:
 
 # ---------------------------------------------------------------------------- caffè
 ## pagamenti possibili per una discussione: [{genere: n}]
-static func pagamenti(s: Dictionary, p: int, c: String, d: int) -> Array:
+static func pagamenti(s: Dictionary, p: int, c: String, d: int, sconto := 0) -> Array:
 	var gg := g(s, p)
 	var disc: Dictionary = Dati.d()["plance"][c]["caffe"][d]
 	var base: Array = []
@@ -1406,16 +1412,20 @@ static func pagamenti(s: Dictionary, p: int, c: String, d: int) -> Array:
 			x[k] = int(disc["costo"][k])
 		base.append(x)
 	var tutti: Array = []
-	var craven: bool = s["viaggiatori"].has("craven") and citta_di(s, "craven") == c
-	for b in base:
-		if craven:
+	var meno: int = sconto + (1 if s["viaggiatori"].has("craven") and citta_di(s, "craven") == c else 0)
+	tutti = base
+	for volta in meno:
+		var nuovi: Array = []
+		for b in tutti:
+			if b.is_empty():
+				nuovi.append(b)
+				continue
 			for k in b:
 				var y: Dictionary = b.duplicate()
 				y[k] = int(y[k]) - 1
 				if int(y[k]) <= 0: y.erase(k)
-				tutti.append(y)
-		else:
-			tutti.append(b)
+				nuovi.append(y)
+		tutti = nuovi
 	var ok: Array = []
 	var visti := {}
 	for t in tutti:
@@ -1434,7 +1444,7 @@ static func _testo_costo(t: Dictionary) -> String:
 		parti.append("%d %s" % [int(t[k]), k])
 	return ", ".join(parti) if parti.size() else "gratis"
 
-static func _opz_discuti(s: Dictionary, p: int, ovunque: bool, dove = "") -> Array:
+static func _opz_discuti(s: Dictionary, p: int, ovunque: bool, dove = "", sconto := 0) -> Array:
 	var gg := g(s, p)
 	var o: Array = []
 	if int(gg["caffe"]) > 0:
@@ -1458,7 +1468,7 @@ static func _opz_discuti(s: Dictionary, p: int, ovunque: bool, dove = "") -> Arr
 				var pv: int = int(Dati.d()["plance"][c]["caffe"][d]["pv"][libero])
 				if s["viaggiatori"].has("montesquieu") and citta_di(s, "montesquieu") == c:
 					pv += 4
-				var pg := pagamenti(s, p, c, d)
+				var pg := pagamenti(s, p, c, d, sconto)
 				for k in pg.size():
 					o.append({"id": "%s:%d:%d" % [c, d, k], "testo": "Caffè di %s: paga %s, +%d PV" % [c, _testo_costo(pg[k]), pv], "nodo": c, "citta": c, "disc": d, "pv": pv})
 	o.append({"id": "salta", "testo": "Non discutere"})
@@ -1675,7 +1685,7 @@ static func applica(s: Dictionary, id: String) -> bool:
 				var pz3 := id.split(":")
 				var c3: String = pz3[0]
 				var d3 := int(pz3[1])
-				var pg: Dictionary = pagamenti(s, p, c3, d3)[int(pz3[2])]
+				var pg: Dictionary = pagamenti(s, p, c3, d3, int(a.get("sconto", 0)))[int(pz3[2])]
 				for k in pg:
 					gg["idee"][k] = int(gg["idee"][k]) - int(pg[k])
 				var spazi: Array = s["citta"][c3]["caffe"][d3]
@@ -1825,9 +1835,17 @@ static func _gioca_scoperta(s: Dictionary, p: int, cid: String) -> void:
 	var inf := info(cid)
 	var cat: String = inf["cat"]
 	var gia := false
-	for a in gg["area"]:
-		if not a["giu"] and info(a["id"])["cat"] == cat:
-			gia = true
+	# categoria della catena: quella (fra le categorie della carta) con più carte già giocate
+	var meglio := 0
+	for c in inf["cats"]:
+		var n := 0
+		for a in gg["area"]:
+			if not a["giu"] and info(a["id"])["cats"].has(c):
+				n += 1
+		if n > meglio:
+			meglio = n
+			cat = c
+	gia = meglio > 0
 	gg["area"].append({"id": cid, "giu": false})
 	var idx: int = gg["area"].size() - 1
 	_log(s, "%s gioca %s." % [gg["nome"], nome_carta(cid)])
@@ -1836,7 +1854,7 @@ static func _gioca_scoperta(s: Dictionary, p: int, cid: String) -> void:
 		if presso(s, p, "keats"):
 			gg["pv"] = int(gg["pv"]) + 2
 	# Pattuglia Austriaca nella città
-	if s["esp"]["napoleone"] and Dati.e_citta(gg["pos"]) and s["citta"][gg["pos"]]["pattuglia"] == cat:
+	if s["esp"]["napoleone"] and Dati.e_citta(gg["pos"]) and s["citta"][gg["pos"]]["pattuglia"] != "" and inf["cats"].has(s["citta"][gg["pos"]]["pattuglia"]):
 		if s["viaggiatori"].has("paolina") and presso(s, p, "paolina"):
 			_attendi(s, p, "pattuglia", {"carta": cid, "idx": idx, "gia": gia})
 			return

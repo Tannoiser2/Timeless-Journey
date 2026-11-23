@@ -2999,7 +2999,18 @@
   "A4": {
    "premio": [
     {
-     "attiva_esplorazione": 1
+     "o": [
+      [
+       {
+        "attiva_esplorazione": 1
+       }
+      ],
+      [
+       {
+        "riusa_esplorazione": 1
+       }
+      ]
+     ]
     }
    ],
    "mod": 2,
@@ -3085,7 +3096,8 @@
    "premio": [
     {
      "discuti": 1,
-     "ovunque": true
+     "ovunque": true,
+     "sconto_idea": 1
     }
    ],
    "mod": 0,
@@ -3140,7 +3152,18 @@
    ],
    "risveglio": [
     {
-     "muovi": 2
+     "o": [
+      [
+       {
+        "muovi": 1
+       }
+      ],
+      [
+       {
+        "esplora": 1
+       }
+      ]
+     ]
     }
    ]
   },
@@ -3148,12 +3171,23 @@
    "nome": "Il Cavallo dell’Incubo",
    "quiete": [
     {
-     "lettera": 1
+     "conversa": 1
     }
    ],
    "risveglio": [
     {
-     "conversa": 1
+     "o": [
+      [
+       {
+        "lettera": 1
+       }
+      ],
+      [
+       {
+        "conversa": 1
+       }
+      ]
+     ]
     }
    ]
   },
@@ -3161,15 +3195,23 @@
    "nome": "L’Incubo",
    "quiete": [
     {
-     "idea": "*"
+     "scrivi": 1
     }
    ],
    "risveglio": [
     {
-     "idea": "*"
-    },
-    {
-     "idea": "*"
+     "o": [
+      [
+       {
+        "scrivi": 1
+       }
+      ],
+      [
+       {
+        "discuti": 1
+       }
+      ]
+     ]
     }
    ]
   },
@@ -3182,33 +3224,34 @@
    ],
    "risveglio": [
     {
-     "monete": 3
-    },
-    {
-     "pv": 1
+     "idea": "*"
     }
    ]
   }
  },
  "andersen": [
   {
-   "cat": "V",
-   "nome": "La Sirenetta",
+   "cat": "F",
+   "cats": [
+    "F"
+   ],
+   "nome": "Festa",
    "eff": [
     {
-     "esplora": 1
-    },
-    {
-     "muovi": 1
+     "pv": 2
     }
    ]
   },
   {
    "cat": "A",
-   "nome": "Il Brutto Anatroccolo",
+   "cats": [
+    "A",
+    "I"
+   ],
+   "nome": "Diario e lettera",
    "eff": [
     {
-     "conversa": 1
+     "scrivi": 1
     },
     {
      "lettera": 1
@@ -3216,26 +3259,34 @@
    ]
   },
   {
-   "cat": "I",
-   "nome": "La Regina delle Nevi",
+   "cat": "V",
+   "cats": [
+    "V",
+    "I"
+   ],
+   "nome": "Caffè ed esplorazione",
    "eff": [
     {
-     "idea": "*"
+     "discuti": 1
     },
     {
-     "scrivi": 1
+     "esplora": 1
     }
    ]
   },
   {
-   "cat": "F",
-   "nome": "L’Acciarino Magico",
+   "cat": "V",
+   "cats": [
+    "V",
+    "A"
+   ],
+   "nome": "Conversazione e viaggio",
    "eff": [
     {
-     "monete": 2
+     "conversa": 1
     },
     {
-     "pv": 1
+     "muovi": 1
     }
    ]
   }

@@ -72,6 +72,7 @@ func _draw() -> void:
 		"gazzetta": _disegna_gazzetta()
 		"mercato": _disegna_mercato()
 		"diari": _disegna_diari()
+		"espansioni": _disegna_espansioni()
 
 # ============================================================================ città
 func _disegna_citta() -> void:
@@ -178,6 +179,12 @@ func _colore_di(chi: int) -> String:
 	return s["giocatori"][chi]["colore"]
 
 func _scudo(c: Vector2, r: float, cat: String) -> void:
+	var tx := Stile.tex("res://assets/img/espansioni/pattuglia_%s.webp" % cat)
+	if tx:
+		var h := r * 3.2
+		var w := h * tx.get_width() / tx.get_height()
+		draw_texture_rect(tx, Rect2(c - Vector2(w, h) / 2, Vector2(w, h)), false)
+		return
 	var pts := PackedVector2Array([c + Vector2(-r, -r), c + Vector2(r, -r), c + Vector2(r, r * 0.2), c + Vector2(0, r * 1.2), c + Vector2(-r, r * 0.2)])
 	draw_colored_polygon(pts, Color("f4f0e6"))
 	draw_rect(Rect2(c + Vector2(-r, -r * 0.35), Vector2(2 * r, r * 0.5)), Color("c8302a"))
@@ -235,7 +242,6 @@ func _disegna_gazzetta() -> void:
 		y = _paragrafo(v["testo"], Vector2(x0, y), size.x - x0 - 10, 18, Stile.CARTA) + 4
 		var premio: Array = D["gazzetta"][s["gazzetta"]]["premi"][col]
 		y = _paragrafo("Incontro: " + Motore.testo_eff(premio), Vector2(x0, y), size.x - x0 - 10, 18, Color("e8d6a8")) + 14
-	y = _espansioni(x0, y)
 	y = _paragrafo("Esperienze: Duello d’Onore (premio doppio, poi niente più incontri con lui), Una Notte da Ricordare (vale doppio nelle maggioranze), Perso nell’Ammirazione (a fine round perdi 1 PV per riavere il premio), Affinità Elettive (2 PV, 6 PV se entrambe con lo stesso viaggiatore). Maggioranze di fine partita per colonna: 5/3/1 PV.", Vector2(x0, y), size.x - x0 - 10, 16, Color("cbb892"))
 
 func _espansioni(x0: float, y: float) -> float:
@@ -422,3 +428,75 @@ func _disegna_diari() -> void:
 		for t2 in gg["dipinti"]:
 			draw_texture_rect(Stile.tex("res://assets/img/tessere/lebrun_%d.webp" % int(t2)), Rect2(xx, y, 64, 64), false)
 			xx += 70
+
+# ============================================================================ espansioni
+func _disegna_espansioni() -> void:
+	var D := Dati.d()
+	var x := 0.0
+	var lato := minf(size.y - 10, size.x * 0.48)
+	if s["esp"]["diodati"]:
+		var risveglio := int(s["round"]) >= 4
+		var vr := Rect2(Vector2(0, 0), Vector2(lato, lato))
+		draw_texture_rect(Stile.tex("res://assets/img/espansioni/villa_%s.webp" % ("risveglio" if risveglio else "quiete")), vr, false)
+		var pos := {"V": Vector2(0.22, 0.27), "A": Vector2(0.78, 0.27), "I": Vector2(0.22, 0.73), "F": Vector2(0.78, 0.73)}
+		for cat in pos:
+			var ch := lato * 0.36
+			var cw := ch * 2.0 / 3.0
+			var c: Vector2 = vr.position + pos[cat] * lato
+			var cr := Rect2(c - Vector2(cw, ch) / 2, Vector2(cw, ch))
+			var path := "res://assets/img/espansioni/mostro_%s_%s.webp" % [cat, "r" if risveglio else "q"]
+			draw_texture_rect(Stile.tex(path), cr, false)
+			_zone.append([cr, "", path])
+			var chi: int = int(s["villa"][cat])
+			if chi >= 0:
+				draw_rect(cr, Color(0, 0, 0, 0.55))
+				var gg: Dictionary = s["giocatori"][chi]
+				Stile.meeple(self, cr.get_center() + Vector2(0, -10), 46, Stile.colore(gg["colore"]))
+				Stile.testo_centrato(self, Stile.grassetto(), gg["nome"], cr.get_center() + Vector2(0, 36), 17, Color.WHITE, Color(0, 0, 0, 0.9))
+		x = lato + 16
+	var y := 6.0
+	var w := size.x - x - 6
+	if s["esp"]["napoleone"]:
+		var k: String = s["battaglia"]["attuale"]
+		var ch2 := minf(240.0, size.y * 0.36)
+		var cw2 := ch2 * 2.0 / 3.0
+		var br := Rect2(Vector2(x, y), Vector2(cw2, ch2))
+		var path2 := "res://assets/img/espansioni/battaglia_%s.webp" % k if k != "" else "res://assets/img/espansioni/battaglia_retro.webp"
+		draw_texture_rect(Stile.tex(path2), br, false)
+		_zone.append([br, "", path2])
+		var pr := Rect2(Vector2(x + cw2 + 10, y), Vector2(cw2, ch2))
+		draw_texture_rect(Stile.tex("res://assets/img/espansioni/promemoria_napoleone.webp"), pr, false)
+		_zone.append([pr, "", "res://assets/img/espansioni/promemoria_napoleone.webp"])
+		var tx := x + 2 * cw2 + 24
+		var tw := size.x - tx - 6
+		var yy := y
+		if tw < 240:
+			tx = x
+			tw = w
+			yy = y + ch2 + 8
+		var soldati := 0
+		for gg in s["giocatori"]:
+			soldati += int(gg["soldati"])
+		if k != "":
+			var b: Dictionary = D["battaglie"][k]
+			yy = _paragrafo("Battaglia %s: serve forza %d, ora %d Soldati Francesi. Ancora %d carte Battaglia." % [k, int(s["nn"]) + int(b["mod"]), soldati, s["battaglia"]["mazzo"].size()], Vector2(tx, yy), tw, 18, Color("e8c48a"))
+		for gg in s["giocatori"]:
+			var riga := Vector2(tx, yy + 4)
+			draw_texture_rect(Stile.tex("res://assets/img/espansioni/soldato.webp"), Rect2(riga, Vector2(20, 36)), false)
+			draw_string(Stile.testo(), riga + Vector2(26, 24), "%s: %d soldati, %d pattuglie" % [gg["nome"], int(gg["soldati"]), gg["pattuglie"].size()], HORIZONTAL_ALIGNMENT_LEFT, tw - 30, 18, Stile.CARTA)
+			yy += 40
+		y = maxf(y + ch2, yy) + 14
+	if s["viaggiatori"].has("andersen"):
+		draw_string(Stile.titolo(), Vector2(x, y + 22), "Riserva Andersen", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Stile.ORO_CHIARO)
+		y += 30
+		var ch3 := minf(220.0, size.y - y - 8)
+		var cw3 := minf(ch3 * 2.0 / 3.0, (w - 30) / 4.0)
+		ch3 = cw3 * 1.5
+		for k3 in 4:
+			var ar := Rect2(Vector2(x + k3 * (cw3 + 10), y), Vector2(cw3, ch3))
+			var path3 := "res://assets/img/espansioni/andersen_%d.webp" % k3
+			draw_texture_rect(Stile.tex(path3), ar, false)
+			_zone.append([ar, "", path3])
+			if int(s["andersen"][k3]) >= 0:
+				draw_rect(ar, Color(0, 0, 0, 0.6))
+				Stile.testo_centrato(self, Stile.grassetto(), "usata", ar.get_center(), 20, Color.WHITE, Color(0, 0, 0, 0.9))

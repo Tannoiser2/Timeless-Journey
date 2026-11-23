@@ -285,30 +285,33 @@ BATTAGLIE = {
     'A1': {'premio': [{'monete': 2}, {'pv': 1}], 'mod': 0, 'pv': [3, 1]},
     'A2': {'premio': [{'idea': '*'}], 'mod': 0, 'pv': [4, 1]},
     'A3': {'premio': [{'muovi': 1}, {'monete': 1}], 'mod': 1, 'pv': [4, 1]},
-    'A4': {'premio': [{'attiva_esplorazione': 1}], 'mod': 2, 'pv': [5, 2]},
+    'A4': {'premio': [{'o': [[{'attiva_esplorazione': 1}], [{'riusa_esplorazione': 1}]]}], 'mod': 2, 'pv': [5, 2]},
     'A5': {'premio': [{'o': [[{'lettera': 1}], [{'conversa': 1}]]}], 'mod': 1, 'pv': [4, 2]},
     'A6': {'premio': [{'lettera': 1}], 'mod': 2, 'pv': [5, 3]},
     'A7': {'premio': [{'compra_max': 1}], 'mod': 2, 'pv': [5, 2], 'una_volta': True},
     'B1': {'premio': [{'compra_max': 1}], 'mod': 3, 'pv': [6, 3], 'una_volta': True},
     'B2': {'premio': [{'scrivi': 1}], 'mod': 2, 'pv': [5, 3]},
-    'B3': {'premio': [{'discuti': 1, 'ovunque': True}], 'mod': 0, 'pv': [4, 1]},
+    'B3': {'premio': [{'discuti': 1, 'ovunque': True, 'sconto_idea': 1}], 'mod': 0, 'pv': [4, 1]},
     'B4': {'premio': [{'scrivi': 1}], 'mod': 1, 'pv': [4, 2]},
     'B5': {'premio': [{'pv': 2}], 'mod': 3, 'pv': [6, 3]},
 }
 PATTUGLIE = ['V', 'V', 'V', 'A', 'A', 'A', 'I', 'I', 'I']
-# Villa Diodati: i bonus delle carte Mostro non sono scritti nel regolamento; questi sono provvisori
+# Villa Diodati: bonus delle carte Mostro (scansioni dell'edizione da collezione)
 MOSTRI = {
-    'V': {'nome': 'Il Vampiro di Polidori', 'quiete': [{'muovi': 1}], 'risveglio': [{'muovi': 2}]},
-    'A': {'nome': 'Il Cavallo dell’Incubo', 'quiete': [{'lettera': 1}], 'risveglio': [{'conversa': 1}]},
-    'I': {'nome': 'L’Incubo', 'quiete': [{'idea': '*'}], 'risveglio': [{'idea': '*'}, {'idea': '*'}]},
-    'F': {'nome': 'La Creatura di Frankenstein', 'quiete': [{'monete': 2}], 'risveglio': [{'monete': 3}, {'pv': 1}]},
+    'V': {'nome': 'Il Vampiro di Polidori', 'quiete': [{'muovi': 1}],
+          'risveglio': [{'o': [[{'muovi': 1}], [{'esplora': 1}]]}]},
+    'A': {'nome': 'Il Cavallo dell’Incubo', 'quiete': [{'conversa': 1}],
+          'risveglio': [{'o': [[{'lettera': 1}], [{'conversa': 1}]]}]},
+    'I': {'nome': 'L’Incubo', 'quiete': [{'scrivi': 1}],
+          'risveglio': [{'o': [[{'scrivi': 1}], [{'discuti': 1}]]}]},
+    'F': {'nome': 'La Creatura di Frankenstein', 'quiete': [{'monete': 2}], 'risveglio': [{'idea': '*'}]},
 }
-# carte Azione Speciale di Andersen: il regolamento non ne riporta il testo; effetti provvisori, una per categoria
+# carte Azione Speciale di Andersen (scansioni): tre sono di due categorie
 ANDERSEN = [
-    {'cat': 'V', 'nome': 'La Sirenetta', 'eff': [{'esplora': 1}, {'muovi': 1}]},
-    {'cat': 'A', 'nome': 'Il Brutto Anatroccolo', 'eff': [{'conversa': 1}, {'lettera': 1}]},
-    {'cat': 'I', 'nome': 'La Regina delle Nevi', 'eff': [{'idea': '*'}, {'scrivi': 1}]},
-    {'cat': 'F', 'nome': 'L’Acciarino Magico', 'eff': [{'monete': 2}, {'pv': 1}]},
+    {'cat': 'F', 'cats': ['F'], 'nome': 'Festa', 'eff': [{'pv': 2}]},
+    {'cat': 'A', 'cats': ['A', 'I'], 'nome': 'Diario e lettera', 'eff': [{'scrivi': 1}, {'lettera': 1}]},
+    {'cat': 'V', 'cats': ['V', 'I'], 'nome': 'Caffè ed esplorazione', 'eff': [{'discuti': 1}, {'esplora': 1}]},
+    {'cat': 'V', 'cats': ['V', 'A'], 'nome': 'Conversazione e viaggio', 'eff': [{'conversa': 1}, {'muovi': 1}]},
 ]
 
 dati = {

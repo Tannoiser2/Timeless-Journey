@@ -228,6 +228,12 @@ func _cameo(pos: Vector2, dim: Vector2, vid: String) -> void:
 	Stile.testo_centrato(self, Stile.titolo(), nome, pos + Vector2(dim.x / 2, dim.y * 0.82), 17, Stile.INCHIOSTRO)
 
 func _pattuglia(c: Vector2, cat: String) -> void:
+	var tx := Stile.tex("res://assets/img/espansioni/pattuglia_%s.webp" % cat)
+	if tx:
+		var h := 70.0
+		var w := h * tx.get_width() / tx.get_height()
+		draw_texture_rect(tx, Rect2(c - Vector2(w, h) / 2, Vector2(w, h)), false)
+		return
 	var pts := PackedVector2Array([c + Vector2(-20, -22), c + Vector2(20, -22), c + Vector2(20, 4), c + Vector2(0, 24), c + Vector2(-20, 4)])
 	draw_colored_polygon(pts, Color("f4f0e6"))
 	var ch := pts.duplicate()
