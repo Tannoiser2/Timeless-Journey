@@ -125,11 +125,20 @@ d.text((108, 388), 'I', font=ImageFont.truetype(F, 15), fill=(70, 60, 45), ancho
 d.text((93, 389), '2', font=ImageFont.truetype(F, 17), fill=(60, 50, 40), anchor='mm')
 salva(im, 'av_59')
 
-# numero italiano in basso a destra su tutte le avanzate
+# carte scansionate dall'edizione italiana (tools/scansioni): sostituiscono quelle del modulo
+SCAN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scansioni')
+scansionate = set()
+for f in sorted(os.listdir(SCAN)):
+    if f.startswith('av_') and f.endswith('.png'):
+        n = f[:-4]
+        Image.open(os.path.join(SCAN, f)).convert('RGB').save(os.path.join(D, n + '.webp'), 'WEBP', quality=88)
+        scansionate.add(int(n[3:]))
+
+# numero italiano in basso a destra sulle altre avanzate
 fnt = ImageFont.truetype(F, 13)
 for n in range(1, 60):
     p = os.path.join(D, f'av_{n:02d}.webp')
-    if not os.path.exists(p):
+    if n in scansionate or not os.path.exists(p):
         continue
     im = Image.open(p).convert('RGB')
     d = ImageDraw.Draw(im)

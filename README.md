@@ -17,7 +17,7 @@ Da Torino a Palermo sulle orme dei primi turisti del Grand Tour: carte in catena
 
 ## Note sul materiale
 
-- La grafica viene dal modulo Tabletop Simulator. Il modulo usa una versione più vecchia delle carte: le carte 47, 50 e 54 sono state corrette (3 PV ogni 2 carte, come nel regolamento italiano), le carte 15, 16, 31, 32 e 59 dell'edizione italiana sono state composte con le icone originali, e il numero in basso a destra è quello del regolamento italiano (`tools/componi_carte.py`).
+- La grafica viene dal modulo Tabletop Simulator, che usa una versione più vecchia delle carte Avanzate: le carte 15, 16, 31, 32, 47, 50, 54 e 59 sono le scansioni dell'edizione italiana (`tools/scansioni`), sulle altre il numero in basso a destra è quello del regolamento italiano (`tools/componi_carte.py`). Dove regolamento e carte non coincidono vale la carta: la 15 dà Storia e Discussione, la 16 (Festività) Scienza e 3 monete, la 31 vale 1 PV, la 32 nessuno, la 59 è Festività.
 - Le espansioni (Mostri, Villa Diodati, carte Battaglia, carte Andersen, Viaggiatori, Pattuglie e Soldati) vengono dalle scansioni dell'edizione da collezione; le sagome dei nuovi viaggiatori sono ricavate dal ritratto delle loro carte.
 
 ## Struttura

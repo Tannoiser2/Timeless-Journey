@@ -1663,21 +1663,13 @@
   "15": {
    "liv": 1,
    "cat": "I",
-   "pv": 1,
+   "pv": 2,
    "eff": [
     {
-     "o": [
-      [
-       {
-        "idea": "Storia"
-       }
-      ],
-      [
-       {
-        "discuti": 1
-       }
-      ]
-     ]
+     "idea": "Storia"
+    },
+    {
+     "discuti": 1
     }
    ],
    "cond": null,
@@ -1685,22 +1677,14 @@
   },
   "16": {
    "liv": 1,
-   "cat": "A",
-   "pv": 1,
+   "cat": "F",
+   "pv": 2,
    "eff": [
     {
-     "o": [
-      [
-       {
-        "idea": "Scienza"
-       }
-      ],
-      [
-       {
-        "monete": 3
-       }
-      ]
-     ]
+     "idea": "Scienza"
+    },
+    {
+     "monete": 3
     }
    ],
    "cond": null,
@@ -1927,7 +1911,7 @@
   "31": {
    "liv": 2,
    "cat": "V",
-   "pv": 2,
+   "pv": 1,
    "eff": [
     {
      "idea": "Arte"
@@ -1942,7 +1926,7 @@
   "32": {
    "liv": 2,
    "cat": "A",
-   "pv": 2,
+   "pv": 0,
    "eff": [
     {
      "idea": "Filosofia"
@@ -2449,7 +2433,7 @@
   },
   "59": {
    "liv": 3,
-   "cat": "A",
+   "cat": "F",
    "pv": 0,
    "eff": [
     {

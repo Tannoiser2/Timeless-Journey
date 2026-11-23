@@ -148,8 +148,8 @@ AV = {  # numero: [livello, categoria, PV, effetto, condizione, copie]
     12: [1, F, 2, [{'idea': '*'}], None, 2],
     13: [1, F, 2, [{'monete': 2}, {'pv': 1}], None, 2],
     14: [1, F, 2, [{'pv': 1}, {'lettera': 1}], None, 1],
-    15: [1, I, 1, [{'o': [[{'idea': 'Storia'}], [{'discuti': 1}]]}], None, 1],
-    16: [1, A, 1, [{'o': [[{'idea': 'Scienza'}], [{'monete': 3}]]}], None, 1],
+    15: [1, I, 2, [{'idea': 'Storia'}, {'discuti': 1}], None, 1],
+    16: [1, F, 2, [{'idea': 'Scienza'}, {'monete': 3}], None, 1],
     17: [2, V, 0, [{'esplora': 1}, {'muovi': 1}], None, 2],
     18: [2, V, 2, [{'muovi': 1, 'sconto': 2}], None, 1],
     19: [2, F, 3, [{'pv': 1}, {'conversa': 1}], None, 2],
@@ -164,8 +164,8 @@ AV = {  # numero: [livello, categoria, PV, effetto, condizione, copie]
     28: [2, F, 3, [{'monete': 2}, {'scrivi': 1}], None, 2],
     29: [2, F, 3, [{'compra': 1, 'sconto': 2}], None, 2],
     30: [2, V, 2, [{'muovi': 2}], None, 2],
-    31: [2, V, 2, [{'idea': 'Arte'}, {'muovi': 1}], None, 1],
-    32: [2, A, 2, [{'idea': 'Filosofia'}, {'lettera': 1}], None, 1],
+    31: [2, V, 1, [{'idea': 'Arte'}, {'muovi': 1}], None, 1],
+    32: [2, A, 0, [{'idea': 'Filosofia'}, {'lettera': 1}], None, 1],
     33: [3, V, 2, [{'o': [[{'esplora': 2}], [{'muovi': 2}]]}], None, 1],
     34: [3, V, 2, [{'muovi': 1, 'sconto': 2}, {'muovi': 1}], None, 1],
     35: [3, V, 2, [{'esplora': 1}, {'muovi': 1, 'sconto': 2}], None, 1],
@@ -192,7 +192,7 @@ AV = {  # numero: [livello, categoria, PV, effetto, condizione, copie]
     56: [3, F, 0, [{'monete': 1}, {'muovi': 2}], {'tipo': 'carte_liv', 'liv': 2, 'ogni': 2, 'pv': 3}, 1],
     57: [3, F, 0, [{'monete': 2}, {'scrivi': 1}], {'tipo': 'carte_cat', 'cat': F, 'ogni': 2, 'pv': 3}, 1],
     58: [3, F, 0, [{'compra': 1, 'sconto': 2}], {'tipo': 'carte_liv', 'liv': 3, 'ogni': 2, 'pv': 3}, 1],
-    59: [3, A, 0, [{'idea': '*'}, {'lettera': 2, 'diverse': True}], {'tipo': 'carte_liv', 'liv': 1, 'ogni': 2, 'pv': 3}, 1],
+    59: [3, F, 0, [{'idea': '*'}, {'lettera': 2, 'diverse': True}], {'tipo': 'carte_liv', 'liv': 1, 'ogni': 2, 'pv': 3}, 1],
 }
 # copie: livello I e II arrivano a 27 carte, il III ne ha 27 (una per effetto)
 for liv in (1, 2, 3):
