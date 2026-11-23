@@ -6,7 +6,8 @@ extends Control
 signal scelta(id: String)
 signal ingrandisci(percorso: String)
 
-var vista := "citta"         # citta | gazzetta | mercato | diari
+var vista := "citta"         # citta | gazzetta | mercato | diari | espansioni
+var compatta := false        # sul tavolo TV: solo la plancia, senza testi sotto
 var citta := "Torino"
 var giocatore := 0           # di chi mostrare i diari
 var s: Dictionary = {}
@@ -22,7 +23,7 @@ func _ready() -> void:
 
 func _process(d: float) -> void:
 	_t += d
-	if not opz.is_empty():
+	if not opz.is_empty() or compatta:
 		queue_redraw()
 
 func aggiorna(stato: Dictionary, scelte: Array) -> void:
@@ -79,7 +80,7 @@ func _disegna_citta() -> void:
 	var D := Dati.d()
 	var c := citta
 	var tx := Stile.tex("res://assets/img/citta/%s.webp" % c)
-	var area := Rect2(Vector2(0, 0), Vector2(size.x, size.y - 92))
+	var area := Rect2(Vector2(0, 0), Vector2(size.x, size.y - (0 if compatta else 92)))
 	var r := _adatta(area, 2481.0 / 1418.0)
 	draw_texture_rect(tx, r, false)
 	var sx := SINISTRA.has(c)
@@ -139,6 +140,9 @@ func _disegna_citta() -> void:
 	if st["pattuglia"] != "":
 		var pc: Vector2 = P.call(0.86 if sx else 0.14, 0.12)
 		_scudo(pc, 36 * u, st["pattuglia"])
+	if compatta:
+		_presenze(r, u, sx)
+		return
 	# testo sotto la plancia: abitanti e ricompense
 	var y := r.end.y + 6
 	var fav: Array = D["favori"][st["favore"]]
@@ -500,3 +504,28 @@ func _disegna_espansioni() -> void:
 			if int(s["andersen"][k3]) >= 0:
 				draw_rect(ar, Color(0, 0, 0, 0.6))
 				Stile.testo_centrato(self, Stile.grassetto(), "usata", ar.get_center(), 20, Color.WHITE, Color(0, 0, 0, 0.9))
+
+## sul tavolo TV: chi si trova in città (meeple sul nome della città) e chi deve decidere qui
+func _presenze(r: Rect2, u: float, sx: bool) -> void:
+	var chi := -1
+	if not s["attesa"].is_empty():
+		chi = int(s["attesa"]["chi"])
+	var qui: Array = []
+	for p in s["giocatori"].size():
+		if s["giocatori"][p]["pos"] == citta:
+			qui.append(p)
+	for au in s.get("automi", []):
+		if au["pos"] == citta:
+			qui.append(au["colore"])
+	var x0 := r.position.x + r.size.x * (0.08 if sx else 0.55)
+	var y0 := r.position.y + r.size.y * 0.1
+	for i in qui.size():
+		var col: Color
+		if qui[i] is String:
+			col = Stile.colore(qui[i])
+		else:
+			col = Stile.colore(s["giocatori"][int(qui[i])]["colore"])
+		Stile.meeple(self, Vector2(x0 + i * 34 * u * 3.2, y0), 120 * u, col)
+	if chi >= 0 and s["giocatori"][chi]["pos"] == citta:
+		var a := 0.6 + 0.4 * sin(_t * 4.0)
+		draw_rect(r.grow(2), Color(1.0, 0.8, 0.2, a), false, 5)

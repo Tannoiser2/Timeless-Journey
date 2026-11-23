@@ -12,6 +12,10 @@ const H := 1825.0
 var s: Dictionary = {}
 var evidenzia: Dictionary = {}     # nodo -> testo (scelte possibili sulla mappa)
 var scelta_citta := ""
+var percorsi := false        # mostra i percorsi dei Viaggiatori Celebri (Gazzetta)
+var vg_sel := -1             # -1 tutti, altrimenti solo la colonna scelta
+const COL_VG := [Color("c8892a"), Color("b3362b"), Color("2f6f9e")]
+const ROMANI := ["I", "II", "III", "IV", "V"]
 var zoom := 1.0
 var centro := Vector2(W / 2, H / 2)
 var _tocchi := {}
@@ -191,6 +195,8 @@ func _draw() -> void:
 			else:
 				_cameo(pos, Vector2(ww, hh), vid)
 			k2 += 1
+	if percorsi:
+		_percorsi()
 	# pedine: giocatori e Automi
 	var per_nodo := {}
 	for p in s["giocatori"].size():
@@ -274,3 +280,46 @@ func _segnapunti() -> void:
 			draw_texture_rect(tx, r, false)
 			if int(gg["pv"]) >= 100:
 				Stile.testo_centrato(self, Stile.grassetto(), "+%d" % (int(gg["pv"]) / 100 * 100), r.get_center() + Vector2(0, 26), 16, Color.WHITE, Color(0, 0, 0, 0.9))
+
+## percorso di ogni Viaggiatore Celebre nei cinque round, con il numero del round su ogni tappa
+func _percorsi() -> void:
+	var D := Dati.d()
+	var r := int(s["round"])
+	var spost := [Vector2(-16, 10), Vector2(0, -14), Vector2(16, 10)]
+	for col in 3:
+		if vg_sel >= 0 and vg_sel != col:
+			continue
+		var citta: Array = D["gazzetta"][s["gazzetta"]]["citta"][col]
+		var col_c: Color = COL_VG[col]
+		var pts: Array = []
+		for i in 5:
+			var n: String = citta[i]
+			pts.append(Vector2(D["nodi"][n][0], D["nodi"][n][1]) + spost[col] * 1.6)
+		for i in 4:
+			if pts[i].distance_to(pts[i + 1]) < 4:
+				continue
+			var a := 0.9 if i + 1 >= r else 0.35
+			var w := 7.0 if vg_sel == col else 5.0
+			draw_line(pts[i], pts[i + 1], Color(0, 0, 0, 0.45 * a), w + 4, true)
+			draw_line(pts[i], pts[i + 1], Color(col_c, a), w, true)
+			# freccia a metà strada
+			var m: Vector2 = (pts[i] + pts[i + 1]) / 2
+			var dir: Vector2 = (pts[i + 1] - pts[i]).normalized()
+			var nrm := Vector2(-dir.y, dir.x)
+			draw_colored_polygon(PackedVector2Array([m + dir * 14, m - dir * 8 + nrm * 10, m - dir * 8 - nrm * 10]), Color(col_c, a))
+		for i in 5:
+			var att := i + 1 == r
+			var passato := i + 1 < r
+			var rr := 19.0 if att else 15.0
+			var q: Vector2 = pts[i] + Vector2(0, -2) + Vector2(i * 0.0, 0)
+			# se più tappe coincidono, scosta i numeri
+			var dup := 0
+			for j in i:
+				if pts[j].distance_to(pts[i]) < 4:
+					dup += 1
+			q += Vector2(dup * 24, -dup * 8)
+			draw_circle(q, rr + 2.5, Color(0, 0, 0, 0.6 if not passato else 0.25))
+			draw_circle(q, rr, Color(col_c, 1.0 if not passato else 0.4))
+			if att:
+				draw_arc(q, rr + 6, 0, TAU, 32, Color(1, 0.9, 0.5, 0.95), 3, true)
+			Stile.testo_centrato(self, Stile.titolo(), ROMANI[i], q + Vector2(0, -1), 18 if att else 15, Color(1, 1, 1, 1.0 if not passato else 0.6))

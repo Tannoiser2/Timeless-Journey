@@ -9,6 +9,7 @@ var web := false
 var fr = null
 var codice := ""
 var url := ""
+var url_tel := ""
 var uid := ""
 
 func _ready() -> void:
@@ -31,6 +32,7 @@ func _process(_d: float) -> void:
 				if e.get("e") == "stanza":
 					codice = e.get("codice", "")
 					url = e.get("url", "")
+					url_tel = e.get("urlTel", "")
 					uid = e.get("uid", "")
 				elif e.get("e") == "dentro":
 					codice = e.get("codice", "")
@@ -78,6 +80,20 @@ func qr(testo: String) -> String:
 	if fr:
 		return str(fr.qr(testo))
 	return ""
+
+## Immagine del QR code di un testo (nera su bianco, un pixel per modulo).
+func qr_texture(testo: String) -> Texture2D:
+	var s := qr(testo)
+	var n := int(round(sqrt(s.length())))
+	if n < 10:
+		return null
+	var im := Image.create(n + 4, n + 4, false, Image.FORMAT_RGB8)
+	im.fill(Color.WHITE)
+	for y in n:
+		for x in n:
+			if s[y * n + x] == "1":
+				im.set_pixel(x + 2, y + 2, Color.BLACK)
+	return ImageTexture.create_from_image(im)
 
 func salva(k: String, v: String) -> void:
 	if fr:

@@ -1,0 +1,93 @@
+@font-face { font-family: 'Fell'; src: url('../font/IMFellEnglishSC.ttf'); }
+@font-face { font-family: 'Garamond'; src: url('../font/EBGaramond-Medium.ttf'); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: #2b2018; color: #3b2a1c; font-family: 'Garamond', Georgia, serif; font-size: 18px;
+  overscroll-behavior: none; }
+body { min-height: 100vh; background: #2b2018 url('../img/copertina.webp') center top / cover fixed; }
+#app { max-width: 720px; margin: 0 auto; min-width: 280px; padding: env(safe-area-inset-top) 8px calc(78px + env(safe-area-inset-bottom)) 8px; }
+h1 { font-family: 'Fell', serif; font-weight: 400; color: #f6e7c4; font-size: 40px; margin: 18px 0 4px; text-align: center;
+  text-shadow: 0 3px 0 #5a2d10, 0 8px 20px rgba(0, 0, 0, .6); }
+h2 { font-family: 'Fell', serif; font-weight: 400; font-size: 24px; margin: 4px 0 6px; color: #5a2d10; }
+h3 { font-family: 'Fell', serif; font-weight: 400; font-size: 20px; margin: 10px 0 4px; color: #5a2d10; }
+.sotto { color: #7a6450; margin: 2px 0; }
+.carta-box, .box { background: rgba(241, 230, 204, .97); border: 2px solid #b88a3a; border-radius: 12px; padding: 10px 12px; margin: 8px 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
+.box.tocca { border-color: #b0401f; box-shadow: 0 0 0 3px rgba(242, 193, 78, .8), 0 4px 14px rgba(0, 0, 0, .35); }
+label { display: block; color: #7a6450; margin: 6px 0 4px; }
+input { width: 100%; font: inherit; font-size: 26px; padding: 8px 12px; border-radius: 10px; border: 2px solid #b88a3a; background: #fbf4e2;
+  color: #3b2a1c; }
+input.codice { text-transform: uppercase; letter-spacing: 10px; text-align: center; font-family: 'Fell', serif; font-size: 38px; }
+button { font: inherit; font-size: 19px; color: #3b2a1c; background: #efe0bd; border: 2px solid #b88a3a; border-radius: 10px; padding: 9px 12px;
+  width: 100%; min-height: 46px; margin: 4px 0; cursor: pointer; text-align: left; }
+button.centro { text-align: center; }
+button.forte { background: #8a2f17; color: #fff4dc; border-color: #5a1d0c; font-family: 'Fell', serif; font-size: 22px; text-align: center; }
+button.verde { background: #4f7f4a; color: #fff; border-color: #2f5a2a; text-align: center; }
+button:active { filter: brightness(.9); transform: scale(.99); }
+button:disabled { opacity: .5; }
+.errore { color: #a63a2b; text-align: center; min-height: 22px; }
+
+/* intestazione */
+.testa { position: sticky; top: 0; z-index: 5; margin: 0 -8px; padding: 6px 10px; background: rgba(43, 32, 24, .96); color: #f1e6cc;
+  border-bottom: 2px solid #b88a3a; }
+.testa .riga { display: flex; align-items: center; gap: 8px; }
+.testa .nome { font-family: 'Fell', serif; font-size: 24px; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.testa .pv { font-family: 'Fell', serif; font-size: 26px; color: #f2c14e; }
+.pallino { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #1a120b; flex: 0 0 auto; }
+.risorse { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 18px; margin-top: 2px; }
+.risorse span { display: inline-flex; align-items: center; gap: 3px; }
+.risorse img { width: 24px; height: 24px; object-fit: contain; }
+.stato { font-size: 17px; color: #ffe3a0; margin-top: 3px; }
+
+/* carte */
+.carte { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.carte.piccole { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 5px; }
+.carta { position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); aspect-ratio: 2 / 3; background: #ddd; }
+.carta img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.carta.giocabile { outline: 3px solid #f2c14e; }
+.carta.scelta { outline: 4px solid #b0401f; transform: translateY(-4px); }
+.carta .eti { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(43, 32, 24, .85); color: #fff4dc; font-size: 14px;
+  text-align: center; padding: 2px; }
+.carta.coperta::after { content: 'coperta'; position: absolute; inset: 40% 0 auto 0; text-align: center; color: #fff; font-size: 15px;
+  text-shadow: 0 0 4px #000; }
+.azioni-carta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.opz-img { display: flex; gap: 10px; align-items: center; }
+.opz-img img { width: 64px; flex: 0 0 auto; border-radius: 6px; }
+
+/* diari */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.chip { width: auto; min-height: 36px; padding: 4px 10px; margin: 0; border-radius: 18px; display: inline-flex; align-items: center; gap: 6px; }
+.chip.su { background: #8a2f17; color: #fff4dc; }
+.diario { position: relative; width: 100%; margin: 6px 0; }
+.diario > img { width: 100%; display: block; border-radius: 6px; }
+.diario .slot { position: absolute; transform: translate(-50%, -50%); }
+.diario .slot img { width: 100%; display: block; }
+.diario .slot.libero { border: 3px solid #f2c14e; border-radius: 50%; background: rgba(242, 193, 78, .25); }
+.tessere { display: flex; flex-wrap: wrap; gap: 6px; }
+.tessere img { width: 58px; height: 58px; border-radius: 6px; }
+.tessere img.usata { filter: grayscale(.8) brightness(.7); }
+
+/* gazzetta e città */
+.vg { display: flex; gap: 10px; }
+.vg img { width: 34%; max-width: 180px; border-radius: 8px; border: 4px solid; align-self: flex-start; }
+.tappe { list-style: none; padding: 0; margin: 6px 0 0; }
+.tappe li { padding: 2px 0; }
+.tappe li.ora { font-weight: bold; color: #8a2f17; }
+.tappe li.passato { color: #9a8670; }
+.citta-img { width: 100%; border-radius: 8px; display: block; }
+table { width: 100%; border-collapse: collapse; font-size: 17px; }
+td, th { padding: 4px 3px; border-bottom: 1px solid #d8c7a2; text-align: right; }
+td:first-child, th:first-child { text-align: left; }
+tr.tot td { font-family: 'Fell', serif; font-size: 20px; border-top: 2px solid #8a6a3a; }
+
+/* barra delle schede */
+.schede { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; background: #2b2018; border-top: 2px solid #b88a3a;
+  padding-bottom: env(safe-area-inset-bottom); }
+.schede button { flex: 1 1 0; margin: 0; border: none; border-radius: 0; background: transparent; color: #f1e6cc; min-height: 58px;
+  text-align: center; font-size: 16px; padding: 4px 2px; font-family: 'Fell', serif; }
+.schede button.su { background: #8a2f17; }
+.schede button.avviso { color: #f2c14e; }
+
+#zoom { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .85); display: flex; align-items: center; justify-content: center;
+  padding: 16px; }
+#zoom[hidden] { display: none; }
+#zoom img { max-width: 100%; max-height: 100%; border-radius: 10px; }

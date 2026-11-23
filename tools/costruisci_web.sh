@@ -9,7 +9,11 @@ mkdir -p build/web
 $GODOT --headless --path . --import >/dev/null 2>&1 || true
 $GODOT --headless --path . --export-release "Web" build/web/index.html
 test -f build/web/index.pck
-cp -r web/js web/font web/img build/web/
+cp -r web/js web/font web/img web/css web/telefono.html build/web/
+# immagini e dati per i telefoni (TV e telefoni)
+mkdir -p build/web/img/g build/web/dati
+(cd assets/img && find . -name "*.webp" | while read f; do mkdir -p "../../build/web/img/g/$(dirname "$f")"; cp "$f" "../../build/web/img/g/$f"; done)
+cp assets/dati/gioco.json build/web/dati/
 # numero di versione (data e ora) per non far usare al browser i file vecchi
 V=$(date -u +%Y%m%d%H%M)
 sed -i "s/__VERSIONE__/$V/g" build/web/index.html

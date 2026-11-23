@@ -59,7 +59,8 @@ window.FR = {
       }
       codice = c;
       const url = base() + '?stanza=' + c + (q.get('rete') === 'locale' ? '&rete=locale' : '');
-      coda.push({ e: 'stanza', codice: c, url, uid: rete.uid });
+      const urlTel = base() + 'telefono.html?s=' + c + (q.get('rete') === 'locale' ? '&rete=locale' : '');
+      coda.push({ e: 'stanza', codice: c, url, urlTel, uid: rete.uid });
       await rete.set(`${RADICE}/${c}/status`, 'aperta');
       stacca.push(rete.onFigli(`${RADICE}/${c}/seats`, {
         aggiunto: (k, v) => coda.push({ e: 'entra', uid: k, nome: v?.name || '' }),

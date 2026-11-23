@@ -58,6 +58,13 @@ static func info(id: String) -> Dictionary:
 		"img": "res://assets/img/espansioni/andersen_%d.webp" % k2,
 		"nome": an["nome"]}
 
+## «a» con l'articolo: il pittore -> al pittore
+static func a_chi(n: String) -> String:
+	for art in [["il ", "al "], ["lo ", "allo "], ["la ", "alla "], ["l’", "all’"]]:
+		if n.begins_with(art[0]):
+			return art[1] + n.substr(art[0].length())
+	return "a " + n
+
 static func nome_carta(id: String) -> String:
 	var i := info(id)
 	if i["tipo"] == "a":
@@ -1360,7 +1367,7 @@ static func _opz_lettera(s: Dictionary, p: int, diverse: bool, fatte: Array, ovu
 			elif rousseau and c != gg["pos"]:
 				ok = true
 			if ok:
-				o.append({"id": k, "testo": "Lettera a %s (%s): %s" % [Dati.d()["abitanti"][c][lato], c, testo_eff(favore_eff(s, c, lato))], "nodo": c, "citta": c, "lato": lato})
+				o.append({"id": k, "testo": "Lettera %s (%s): %s" % [a_chi(Dati.d()["abitanti"][c][lato]), c, testo_eff(favore_eff(s, c, lato))], "nodo": c, "citta": c, "lato": lato})
 	o.append({"id": "salta", "testo": "Non scrivere lettere"})
 	return o
 
@@ -1672,7 +1679,7 @@ static func applica(s: Dictionary, id: String) -> bool:
 		"lettera":
 			if id != "salta":
 				var pz2 := id.split(":")
-				_log(s, "%s scrive a %s (%s)." % [gg["nome"], Dati.d()["abitanti"][pz2[0]][int(pz2[1])], pz2[0]])
+				_log(s, "%s scrive %s (%s)." % [gg["nome"], a_chi(Dati.d()["abitanti"][pz2[0]][int(pz2[1])]), pz2[0]])
 				var fatte: Array = a["fatte"].duplicate()
 				fatte.append(id)
 				if int(a["n"]) > 1:

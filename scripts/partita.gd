@@ -50,6 +50,7 @@ var _attesa_ia := 0.0
 var _vista_3d := false
 var _ultima_attesa := ""
 var _round_salvato := 0
+var n_mossa := 0            # numero della decisione: le mosse dai telefoni devono rispondere a quella giusta
 
 var mappa: Mappa
 var mappa3d: Mappa3D
@@ -269,6 +270,7 @@ func _applica(id: String) -> void:
 	var prima_log: int = s["log"].size()
 	if not Motore.applica(s, id):
 		return
+	n_mossa += 1
 	_suoni(prima_log)
 	_dopo(prima_round != int(s["round"]))
 
@@ -281,9 +283,12 @@ func _suoni(prima_log: int) -> void:
 	elif s["log"].size() != prima_log:
 		rete.suono("carta")
 
+func pacchetto() -> Dictionary:
+	return {"s": s}
+
 func _dopo(round_nuovo := false) -> void:
-	if modo == "host" and rete:
-		rete.stato({"s": s})
+	if (modo == "host" or modo == "tavolo") and rete:
+		rete.stato(pacchetto())
 	_salva(round_nuovo)
 	_aggiorna()
 	if s["fine"]:
@@ -293,7 +298,9 @@ func _dopo(round_nuovo := false) -> void:
 
 ## mossa arrivata da un ospite online
 func mossa_remota(a: Dictionary, uid: String) -> void:
-	if modo != "host":
+	if modo != "host" and modo != "tavolo":
+		return
+	if a.has("n") and int(a["n"]) != n_mossa:
 		return
 	var p: int = int(a.get("p", -1))
 	if p != chi_deve() or p < 0:
@@ -323,7 +330,7 @@ func _salva(round_nuovo: bool) -> void:
 	if round_nuovo or int(s["round"]) != _round_salvato:
 		_round_salvato = int(s["round"])
 		rete.salva_remoto(dati)
-		if modo == "host":
+		if modo == "host" or modo == "tavolo":
 			rete.salva_stanza(dati)
 
 # ============================================================================ interfaccia

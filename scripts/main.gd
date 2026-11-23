@@ -10,6 +10,9 @@ var contenuto: Control = null
 # impostazioni della nuova partita
 var posti: Array = []        # [{attivo, nome, colore, tipo}]
 var solo := false
+var tavolo := false          # TV e telefoni: questo schermo fa da tavolo, si gioca dal telefono con il QR code
+var qr_lobby: TextureRect = null
+var ripresa_tavolo: Dictionary = {}
 var modo_vg := "intro"
 var scelti_vg: Array = []
 var gazzetta := ""
@@ -140,14 +143,20 @@ func _impostazioni() -> void:
 	# modo
 	var hm := HBoxContainer.new()
 	vb.add_child(hm)
-	var b1 := Stile.bottone("Partita da 2 a 5", func(): solo = false; _impostazioni(), 22, 230)
+	var b1 := Stile.bottone("Su questo schermo", func(): solo = false; _metti_tavolo(false); _impostazioni(), 22, 240)
 	b1.toggle_mode = true
-	b1.button_pressed = not solo
+	b1.button_pressed = not solo and not tavolo
 	hm.add_child(b1)
-	var b2 := Stile.bottone("Solitario con gli Automi", func(): solo = true; _impostazioni(), 22, 290)
+	var b3 := Stile.bottone("TV e telefoni (QR code)", func(): solo = false; _metti_tavolo(true); _impostazioni(), 22, 290)
+	b3.toggle_mode = true
+	b3.button_pressed = tavolo
+	hm.add_child(b3)
+	var b2 := Stile.bottone("Solitario con gli Automi", func(): solo = true; _metti_tavolo(false); _impostazioni(), 22, 290)
 	b2.toggle_mode = true
 	b2.button_pressed = solo
 	hm.add_child(b2)
+	if tavolo:
+		vb.add_child(Stile.paragrafo("Questo schermo (la TV) fa da tavolo: mappa al centro e le otto città ai lati. Ogni giocatore inquadra il QR code con il telefono e lì ha la sua mano, le carte giocate, i Diari e le scelte. I posti senza telefono li gioca il computer.", 1000, 19))
 	# giocatori
 	vb.add_child(Stile.etichetta("Giocatori", 26, Stile.INCHIOSTRO, Stile.titolo()))
 	var n := 1 if solo else 5
@@ -173,7 +182,15 @@ func _impostazioni() -> void:
 		oc.selected = COLORI.find(posti[i]["colore"])
 		oc.item_selected.connect(func(k): posti[i]["colore"] = COLORI[k])
 		r.add_child(oc)
-		if not solo:
+		if tavolo:
+			var ot2 := OptionButton.new()
+			ot2.custom_minimum_size = Vector2(330, 0)
+			ot2.add_item("Persona con il telefono", 0)
+			ot2.add_item("Computer", 1)
+			ot2.selected = 1 if posti[i]["tipo"] == "ia" else 0
+			ot2.item_selected.connect(func(k): posti[i]["tipo"] = ["rete", "ia"][k])
+			r.add_child(ot2)
+		elif not solo:
 			var ot := OptionButton.new()
 			ot.custom_minimum_size = Vector2(330, 0)
 			ot.add_item("Persona su questo dispositivo", 0)
@@ -301,6 +318,12 @@ func _parti() -> void:
 	var online := 0
 	for g in o["giocatori"]:
 		if g["tipo"] == "rete": online += 1
+	if tavolo:
+		if online == 0:
+			stato_rete.text = "Con TV e telefoni serve almeno una persona con il telefono."
+			return
+		_apri_tavolo(o, {})
+		return
 	if online > 0:
 		_apri_stanza(o, online)
 		return
@@ -309,7 +332,7 @@ func _parti() -> void:
 
 func _gioca(s: Dictionary, modo: String, posto: int) -> void:
 	_pulisci()
-	partita = Partita.new()
+	partita = Tavolo.new() if modo == "tavolo" else Partita.new()
 	partita.livello_ia = livello_ia
 	add_child(partita)
 	partita.esci.connect(_esci_partita)
@@ -327,7 +350,10 @@ func _riprendi(j: String) -> void:
 		if stato_rete: stato_rete.text = "Il salvataggio non si legge."
 		return
 	var s: Dictionary = d["s"]
-	if d.get("modo", "locale") == "host":
+	if d.get("modo", "locale") == "tavolo" and rete.web:
+		_apri_tavolo({}, s)
+		return
+	if d.get("modo", "locale") == "host" or d.get("modo", "locale") == "tavolo":
 		# la partita online riprende sullo stesso dispositivo: i posti online diventano del computer
 		for g in s["giocatori"]:
 			if g["tipo"] == "rete":
@@ -390,6 +416,128 @@ func _avvia_online() -> void:
 			break
 	_gioca(s, "host", mio)
 
+# ============================================================================ TV e telefoni
+func _metti_tavolo(v: bool) -> void:
+	tavolo = v
+	for i in posti.size():
+		if v and posti[i]["tipo"] != "ia":
+			posti[i]["tipo"] = "rete"
+		elif not v and posti[i]["tipo"] == "rete":
+			posti[i]["tipo"] = "umano"
+
+## sala d'attesa: QR code grande, i giocatori entrano dal telefono. ripresa: partita salvata da riprendere
+func _apri_tavolo(o: Dictionary, ripresa: Dictionary) -> void:
+	if not rete.web:
+		if stato_rete:
+			stato_rete.text = "Il gioco con i telefoni funziona solo nella versione per browser."
+		return
+	stanza_attesa = o
+	ripresa_tavolo = ripresa
+	ospiti = []
+	_pulisci()
+	_fondo()
+	var vb := _scatola(1100)
+	vb.add_child(Stile.etichetta("Tavolo con i telefoni", 38, Color("5a2d10"), Stile.titolo()))
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 30)
+	vb.add_child(hb)
+	qr_lobby = TextureRect.new()
+	qr_lobby.custom_minimum_size = Vector2(420, 420)
+	qr_lobby.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	qr_lobby.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	qr_lobby.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	hb.add_child(qr_lobby)
+	stato_rete = Stile.paragrafo("Apro la stanza...", 560, 24)
+	stato_rete.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(stato_rete)
+	var hb2 := HBoxContainer.new()
+	vb.add_child(hb2)
+	hb2.add_child(Stile.bottone("Annulla", func(): rete.chiudi(); qr_lobby = null; _home(), 24, 180))
+	hb2.add_child(Stile.bottone("Inizia (i posti vuoti al computer)", _avvia_tavolo, 24, 420))
+	rete.avvia()
+
+func _posti_telefono() -> Array:
+	var gs: Array = ripresa_tavolo["giocatori"] if not ripresa_tavolo.is_empty() else stanza_attesa["giocatori"]
+	var out: Array = []
+	for g in gs:
+		if g["tipo"] == "rete":
+			out.append(g)
+	return out
+
+func _testo_tavolo() -> void:
+	if stato_rete == null:
+		return
+	var righe: Array = ["Inquadra il QR code con il telefono,", "oppure apri %s" % rete.url_tel, "e scrivi il codice %s." % rete.codice, ""]
+	var posti_t := _posti_telefono()
+	righe.append("Posti con il telefono: %d" % posti_t.size())
+	for o in ospiti:
+		righe.append("  %s è dentro" % o["nome"])
+	if ospiti.size() > posti_t.size():
+		righe.append("(i telefoni in più guardano soltanto)")
+	stato_rete.text = "\n".join(righe)
+
+func _avvia_tavolo() -> void:
+	var s: Dictionary
+	var liberi: Array = ospiti.duplicate()
+	if not ripresa_tavolo.is_empty():
+		s = ripresa_tavolo
+		# prima chi ritrova il suo nome, poi gli altri in ordine
+		var da_fare: Array = []
+		for g in s["giocatori"]:
+			if g["tipo"] != "rete":
+				continue
+			var preso := -1
+			for k in liberi.size():
+				if String(liberi[k]["nome"]).to_lower() == String(g["nome"]).to_lower():
+					preso = k
+					break
+			if preso >= 0:
+				g["uid"] = liberi[preso]["uid"]
+				liberi.remove_at(preso)
+			else:
+				da_fare.append(g)
+		for g in da_fare:
+			if liberi.size():
+				g["uid"] = liberi[0]["uid"]
+				liberi.remove_at(0)
+			else:
+				g["tipo"] = "ia"
+	else:
+		var o: Dictionary = stanza_attesa.duplicate(true)
+		if o.is_empty():
+			return
+		for g in o["giocatori"]:
+			if g["tipo"] == "rete":
+				if liberi.size():
+					g["uid"] = liberi[0]["uid"]
+					g["nome"] = String(liberi[0]["nome"]).substr(0, 16)
+					liberi.remove_at(0)
+				else:
+					g["tipo"] = "ia"
+		var nomi := {}
+		for g in o["giocatori"]:
+			while nomi.has(g["nome"]):
+				g["nome"] = g["nome"] + "*"
+			nomi[g["nome"]] = true
+		s = Motore.nuova(o)
+	stanza_attesa = {}
+	ripresa_tavolo = {}
+	qr_lobby = null
+	_gioca(s, "tavolo", 0)
+
+## un telefono rientra a partita iniziata (pagina ricaricata o telefono nuovo): ritrova il posto con il nome
+func _rientra(uid: String, nome: String) -> void:
+	var s: Dictionary = partita.s
+	for g in s["giocatori"]:
+		if g.get("uid", "") == uid:
+			return
+	for g in s["giocatori"]:
+		if (g["tipo"] == "rete" or g["tipo"] == "ia") and String(g["nome"]).to_lower() == nome.to_lower() and g.has("uid") and g["uid"] != "":
+			g["uid"] = uid
+			g["tipo"] = "rete"
+			partita._dopo()
+			return
+
 # ============================================================================ online: ospite
 func _entra_schermo(codice: String) -> void:
 	_pulisci()
@@ -429,9 +577,25 @@ func _entra(c: String, nome: String) -> void:
 func _evento_rete(e: Dictionary) -> void:
 	match e.get("e"):
 		"stanza":
-			_testo_stanza()
+			if qr_lobby:
+				qr_lobby.texture = rete.qr_texture(rete.url_tel)
+				_testo_tavolo()
+			else:
+				_testo_stanza()
 		"entra":
-			if not stanza_attesa.is_empty():
+			if qr_lobby:
+				var uid2 := str(e.get("uid", ""))
+				var trovato := false
+				for o in ospiti:
+					if o["uid"] == uid2:
+						o["nome"] = str(e.get("nome", ""))
+						trovato = true
+				if not trovato:
+					ospiti.append({"uid": uid2, "nome": str(e.get("nome", "Viaggiatore"))})
+				_testo_tavolo()
+			elif partita and partita.modo == "tavolo":
+				_rientra(str(e.get("uid", "")), str(e.get("nome", "")))
+			elif not stanza_attesa.is_empty():
 				var uid := str(e.get("uid", ""))
 				var gia := false
 				for o in ospiti:
@@ -445,7 +609,7 @@ func _evento_rete(e: Dictionary) -> void:
 					ospiti.append({"uid": uid, "nome": str(e.get("nome", "Ospite"))})
 				_testo_stanza()
 		"azione":
-			if partita and partita.modo == "host":
+			if partita and (partita.modo == "host" or partita.modo == "tavolo"):
 				var a = JSON.parse_string(str(e.get("p", "")))
 				if a is Dictionary:
 					partita.mossa_remota(a, str(e.get("uid", "")))
