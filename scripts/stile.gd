@@ -84,6 +84,8 @@ static func tema() -> Theme:
 	t.set_stylebox("hover", "OptionButton", scatola(Color("f8ecd0"), Color("8a5f22"), 8, 2))
 	t.set_icon("unchecked", "CheckBox", _casella(false))
 	t.set_icon("checked", "CheckBox", _casella(true))
+	t.set_icon("checked_disabled", "CheckBox", _casella(true))
+	t.set_icon("unchecked_disabled", "CheckBox", _casella(false))
 	t.set_icon("arrow", "OptionButton", _freccia())
 	t.set_stylebox("panel", "PanelContainer", scatola(Color(0.95, 0.91, 0.81, 0.97), ORO, 10, 2, 12))
 	t.set_stylebox("panel", "PopupMenu", scatola(Color("f4ead2"), ORO, 6, 2, 8))

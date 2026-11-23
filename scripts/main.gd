@@ -32,7 +32,7 @@ func _ready() -> void:
 	rete = Rete.new()
 	add_child(rete)
 	rete.evento.connect(_evento_rete)
-	var nomi := ["Stefano", "Computer 1", "Computer 2", "Computer 3", "Computer 4"]
+	var nomi := ["Stefano", "Giulia", "Marco", "Lucia", "Pietro"]
 	for i in 5:
 		posti.append({"attivo": i < 3, "nome": nomi[i], "colore": COLORI[i], "tipo": "umano" if i == 0 else "ia"})
 	var p := rete.parametri()
