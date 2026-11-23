@@ -1,482 +1,481 @@
-extends Node
+extends Control
+## Menu principale: nuova partita (fino a 5 giocatori, computer, online), solitario con gli Automi, espansioni,
+## partita salvata, stanze online su Firebase.
 
-const Firebase = preload("res://scripts/firebase_service.gd")
-const INK := Color("#162632")
-const PAPER := Color("#efe2c1")
-const GOLD := Color("#c89b45")
-const TEAL := Color("#286d70")
-const WINE := Color("#783d45")
-const CITIES := [
-	{"name":"Torino", "pos":Vector3(-2.8,0,-4.6), "color":Color("#5079a7")},
-	{"name":"Venezia", "pos":Vector3(2.5,0,-4.0), "color":Color("#438e76")},
-	{"name":"Bologna", "pos":Vector3(0.8,0,-2.4), "color":Color("#c6813f")},
-	{"name":"Firenze", "pos":Vector3(0.1,0,-0.9), "color":Color("#5e936b")},
-	{"name":"Perugia", "pos":Vector3(1.3,0,0.4), "color":Color("#84659e")},
-	{"name":"Roma", "pos":Vector3(0.3,0,2.1), "color":Color("#a94745")},
-	{"name":"Napoli", "pos":Vector3(1.5,0,4.0), "color":Color("#3d929a")},
-	{"name":"Palermo", "pos":Vector3(-0.2,0,7.1), "color":Color("#a45f88")}
-]
-const ACTIONS := ["Viaggio", "Amicizia", "Ispirazione", "Festività"]
-const IDEA_NAMES := ["Arte", "Storia", "Filosofia", "Scienza"]
+var rete: Rete
+var partita: Partita = null
+var stato_rete: Label = null
+var contenuto: Control = null
 
-var rng := RandomNumberGenerator.new()
-var firebase: FirebaseService
-var world: Node3D
-var camera: Camera3D
-var hud: Control
-var center: Control
-var toast: Label
-var phase_label: Label
-var stats_label: Label
-var log_label: RichTextLabel
-var hand_box: HBoxContainer
-var action_box: HBoxContainer
-var city_buttons: Array[Button] = []
-var mode := ""
-var room_code := ""
-var round_no := 1
-var turn_no := 1
-var current_player := 0
-var awaiting_city := false
-var players: Array = []
-var deck: Array[String] = []
-var hand: Array[String] = []
-var played: Array[String] = []
-var market := ["Passo deciso", "Conversazione brillante", "Taccuino curioso"]
-var city_state: Array = []
-var automa_failed_slots := 0
+# impostazioni della nuova partita
+var posti: Array = []        # [{attivo, nome, colore, tipo}]
+var solo := false
+var modo_vg := "intro"
+var scelti_vg: Array = []
+var gazzetta := ""
+var favori_intro := true
+var senza_settima := false
+var esp := {"napoleone": false, "diodati": false, "romantici": false}
+var livello_ia := 2
+
+# online
+var stanza_attesa: Dictionary = {}
+var ospiti: Array = []       # [{uid, nome}]
+var mio_uid := ""
+var nome_ospite := "Viaggiatore"
+
+const COLORI := ["rosso", "giallo", "verde", "blu", "grigio"]
 
 func _ready() -> void:
-	rng.randomize()
-	firebase = Firebase.new()
-	add_child(firebase)
-	firebase.errore.connect(_notify)
-	_build_world()
-	_build_ui()
-	_show_menu()
-
-func _build_world() -> void:
-	world = Node3D.new()
-	add_child(world)
-	var env := WorldEnvironment.new()
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#0b1720")
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#f2dca9")
-	environment.ambient_light_energy = 0.7
-	env.environment = environment
-	world.add_child(env)
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-55,-25,0)
-	light.light_color = Color("#ffe1a6")
-	light.light_energy = 1.25
-	light.shadow_enabled = true
-	world.add_child(light)
-	var board := MeshInstance3D.new()
-	var board_mesh := BoxMesh.new()
-	board_mesh.size = Vector3(11,0.3,15)
-	board.mesh = board_mesh
-	board.position = Vector3(0,-0.25,1)
-	board.material_override = _material(Color("#d6c79f"),0.85)
-	world.add_child(board)
-	for i in range(CITIES.size()-1): _make_route(CITIES[i].pos, CITIES[i+1].pos)
-	for i in CITIES.size(): _make_city(i)
-	_make_route(CITIES[0].pos, CITIES[2].pos)
-	_make_route(CITIES[3].pos, CITIES[5].pos)
-	camera = Camera3D.new()
-	camera.position = Vector3(10,14,16)
-	camera.look_at_from_position(camera.position, Vector3(0,0,1))
-	camera.fov = 48
-	world.add_child(camera)
-
-func _material(color: Color, rough := 0.6) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = rough
-	return material
-
-func _make_route(a: Vector3, b: Vector3) -> void:
-	var mesh := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	var distance := a.distance_to(b)
-	cylinder.height = distance
-	cylinder.top_radius = 0.055
-	cylinder.bottom_radius = 0.055
-	mesh.mesh = cylinder
-	mesh.position = (a+b)/2.0 + Vector3(0,0.08,0)
-	mesh.rotation.x = PI/2.0
-	mesh.rotation.z = atan2(b.x-a.x,b.z-a.z)
-	mesh.material_override = _material(Color("#8f6e3e"))
-	world.add_child(mesh)
-
-func _make_city(index: int) -> void:
-	var data: Dictionary = CITIES[index]
-	var base := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	cylinder.height = 0.35
-	cylinder.top_radius = 0.52
-	cylinder.bottom_radius = 0.65
-	base.mesh = cylinder
-	base.position = data.pos + Vector3(0,0.18,0)
-	base.material_override = _material(data.color)
-	world.add_child(base)
-	var dome := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.28
-	sphere.height = 0.5
-	dome.mesh = sphere
-	dome.position = data.pos + Vector3(0,0.55,0)
-	dome.material_override = _material(GOLD,0.25)
-	world.add_child(dome)
-
-func _build_ui() -> void:
-	hud = Control.new()
-	hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(hud)
-	var title := Label.new()
-	title.text = "TIMELESS JOURNEY"
-	title.position = Vector2(34,22)
-	title.add_theme_font_size_override("font_size",30)
-	title.add_theme_color_override("font_color",GOLD)
-	hud.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = "IL GRAND TOUR ITALIANO"
-	subtitle.position = Vector2(37,58)
-	subtitle.add_theme_font_size_override("font_size",15)
-	subtitle.add_theme_color_override("font_color",PAPER)
-	hud.add_child(subtitle)
-	phase_label = Label.new()
-	phase_label.position = Vector2(34,100)
-	phase_label.add_theme_font_size_override("font_size",18)
-	phase_label.add_theme_color_override("font_color",Color.WHITE)
-	hud.add_child(phase_label)
-	stats_label = Label.new()
-	stats_label.position = Vector2(34,132)
-	stats_label.add_theme_font_size_override("font_size",17)
-	stats_label.add_theme_color_override("font_color",PAPER)
-	hud.add_child(stats_label)
-	log_label = RichTextLabel.new()
-	log_label.position = Vector2(28,590)
-	log_label.size = Vector2(360,250)
-	log_label.fit_content = false
-	log_label.bbcode_enabled = true
-	log_label.add_theme_font_size_override("normal_font_size",15)
-	log_label.add_theme_color_override("default_color",PAPER)
-	hud.add_child(log_label)
-	action_box = HBoxContainer.new()
-	action_box.position = Vector2(410,718)
-	action_box.add_theme_constant_override("separation",12)
-	hud.add_child(action_box)
-	hand_box = HBoxContainer.new()
-	hand_box.position = Vector2(410,790)
-	hand_box.add_theme_constant_override("separation",8)
-	hud.add_child(hand_box)
-	toast = Label.new()
-	toast.position = Vector2(1040,26)
-	toast.size = Vector2(360,80)
-	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	toast.add_theme_font_size_override("font_size",16)
-	toast.add_theme_color_override("font_color",Color("#f7d68a"))
-	hud.add_child(toast)
-	for i in CITIES.size():
-		var button := Button.new()
-		button.text = CITIES[i].name
-		button.custom_minimum_size = Vector2(110,34)
-		button.visible = false
-		button.pressed.connect(_city_selected.bind(i))
-		hud.add_child(button)
-		city_buttons.append(button)
-	center = Control.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hud.add_child(center)
-
-func _show_menu() -> void:
-	clear_children(center)
-	for button in city_buttons: button.visible = false
-	var veil := ColorRect.new()
-	veil.color = Color(0.02,0.04,0.05,0.82)
-	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.add_child(veil)
-	var panel := VBoxContainer.new()
-	panel.position = Vector2(455,185)
-	panel.size = Vector2(530,570)
-	panel.add_theme_constant_override("separation",14)
-	center.add_child(panel)
-	var heading := Label.new()
-	heading.text = "Il tuo viaggio comincia a Torino"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size",28)
-	heading.add_theme_color_override("font_color",GOLD)
-	panel.add_child(heading)
-	var intro := Label.new()
-	intro.text = "Attraversa l’Italia, incontra viaggiatori illustri e raccogli idee da affidare ai tuoi diari. Cinque round, una storia irripetibile."
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intro.custom_minimum_size.y = 88
-	intro.add_theme_font_size_override("font_size",17)
-	intro.add_theme_color_override("font_color",PAPER)
-	panel.add_child(intro)
-	_add_menu_button(panel,"Partita in solitario",func(): _start_game("solo",3))
-	_add_menu_button(panel,"Gioca contro 3 viaggiatori IA",func(): _start_game("ia",4))
-	_add_menu_button(panel,"Passa e gioca (2–5)",func(): _show_player_picker())
-	_add_menu_button(panel,"Multiplayer online — crea stanza",func(): _create_online_room())
-	_add_menu_button(panel,"Continua partita salvata",func(): _continue_game())
-	var note := Label.new()
-	note.text = "Interfaccia e carte in italiano · Salvataggio automatico locale\nFirebase abilita stanze e salvataggi cloud quando configurato"
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.add_theme_font_size_override("font_size",14)
-	note.add_theme_color_override("font_color",Color("#b9b6a7"))
-	panel.add_child(note)
-
-func _add_menu_button(parent: Control, text_value: String, callback: Callable) -> void:
-	var button := Button.new()
-	button.text = text_value
-	button.custom_minimum_size = Vector2(500,52)
-	button.add_theme_font_size_override("font_size",17)
-	button.pressed.connect(callback)
-	parent.add_child(button)
-
-func _show_player_picker() -> void:
-	clear_children(center)
-	var box := VBoxContainer.new()
-	box.position = Vector2(540,285)
-	box.add_theme_constant_override("separation",12)
-	center.add_child(box)
-	var title := Label.new(); title.text = "Numero di viaggiatori"; title.add_theme_font_size_override("font_size",26); box.add_child(title)
-	for count in range(2,6): _add_menu_button(box,str(count),_start_game.bind("locale",count))
-
-func _create_online_room() -> void:
-	room_code = "%04d" % rng.randi_range(1000,9999)
-	if not firebase.enabled:
-		_notify("Stanza %s pronta in modalità dimostrativa. Configura Firebase per invitare altri browser." % room_code)
-	_start_game("online",2)
-
-func _start_game(selected_mode: String, count: int) -> void:
-	mode = selected_mode
-	players.clear()
-	city_state.clear()
-	for _i in CITIES.size(): city_state.append({"cafe_left":false,"cafe_right":false,"friend_left":false,"friend_right":false,"friend_tile":true})
-	automa_failed_slots = 0
-	for i in count:
-		players.append({"name":"Tu" if i == 0 else ("Automa %s" % char(944+i) if selected_mode == "solo" else ("Viaggiatore IA %s" % i if selected_mode == "ia" else "Viaggiatore %s" % (i+1))), "city":0, "coins":1 if i < 2 else 2, "vp":5, "ideas":[0,0,0,0], "explore":[], "friends":0, "journal":0, "is_ai": i > 0 and selected_mode in ["solo","ia"], "automa_kind":i if i > 0 and selected_mode == "solo" else 0})
-	deck = ["Viaggio","Viaggio","Amicizia","Amicizia","Ispirazione","Ispirazione","Festività"]
-	rng.shuffle(deck)
-	hand = deck.duplicate()
-	played.clear(); round_no = 1; turn_no = 1; current_player = 0; awaiting_city = false
-	clear_children(center)
-	_log("[color=#c89b45]La carrozza lascia Torino. Il Grand Tour ha inizio.[/color]")
-	_layout_city_buttons()
-	_refresh()
-	_save()
-
-func _layout_city_buttons() -> void:
-	var positions := [Vector2(492,245),Vector2(716,266),Vector2(648,340),Vector2(610,410),Vector2(665,468),Vector2(615,535),Vector2(668,610),Vector2(570,680)]
-	for i in city_buttons.size(): city_buttons[i].position = positions[i]
-
-func _refresh() -> void:
-	if players.is_empty(): return
-	var player: Dictionary = players[current_player]
-	phase_label.text = "ROUND %s / 5   ·   TURNO %s / 5" % [round_no,turn_no]
-	stats_label.text = "%s  ·  %s  ·  %s monete  ·  %s PV\nIdee: Arte %s  Storia %s  Filosofia %s  Scienza %s\nDiario: %s pagine  ·  Esplorazioni: %s  ·  Amici: %s" % [player.name,CITIES[player.city].name,player.coins,player.vp,player.ideas[0],player.ideas[1],player.ideas[2],player.ideas[3],player.journal,player.explore.size(),player.friends]
-	clear_children(action_box)
-	clear_children(hand_box)
-	if player.is_ai:
-		var timer := get_tree().create_timer(0.65)
-		timer.timeout.connect(_ai_turn)
-		return
-	for action in ACTIONS:
-		var button := Button.new(); button.text = action; button.custom_minimum_size = Vector2(150,52); button.pressed.connect(_play_action.bind(action)); action_box.add_child(button)
-	var down := Button.new(); down.text = "Carta coperta: +2 monete"; down.custom_minimum_size = Vector2(208,52); down.pressed.connect(_play_face_down); action_box.add_child(down)
-	for card in hand:
-		var label := Label.new(); label.text = card; label.custom_minimum_size = Vector2(112,34); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.add_theme_color_override("font_color",PAPER); hand_box.add_child(label)
-
-func _play_action(action: String) -> void:
-	if awaiting_city: return
-	var index := hand.find(action)
-	if index < 0:
-		_notify("Non hai una carta %s in mano." % action)
-		return
-	hand.remove_at(index); played.append(action)
-	match action:
-		"Viaggio":
-			awaiting_city = true
-			for i in city_buttons.size(): city_buttons[i].visible = abs(i-int(players[current_player].city)) == 1
-			_notify("Scegli una città adiacente")
-			return
-		"Amicizia":
-			players[current_player].friends += 1
-			players[current_player].coins += 1
-			_log("%s conversa con un abitante di %s: un nuovo amico e 1 moneta." % [players[current_player].name,CITIES[players[current_player].city].name])
-		"Ispirazione":
-			var idea := rng.randi_range(0,3); players[current_player].ideas[idea] += 1; players[current_player].vp += 1
-			_log("%s trova un’idea di %s e ottiene 1 PV." % [players[current_player].name,IDEA_NAMES[idea]])
-		"Festività":
-			var p: Dictionary = players[current_player]
-			if p.ideas.max() > 0:
-				var idea_index: int = p.ideas.find(p.ideas.max()); p.ideas[idea_index] -= 1; p.journal += 1; p.vp += 2 + p.journal
-				_log("%s scrive nel Diario di viaggio: +%s PV." % [p.name,2+p.journal])
-			else:
-				p.coins += 2; _log("Nessuna idea da annotare: %s riceve 2 monete." % p.name)
-	_resolve_chain(action)
-	_end_turn()
-
-func _resolve_chain(action: String) -> void:
-	var repeats := played.count(action)-1
-	if repeats <= 0: return
-	players[current_player].coins += repeats
-	players[current_player].vp += repeats
-	_log("Catena di %s: %s riattivazioni, +%s monete e +%s PV." % [action,repeats,repeats,repeats])
-
-func _play_face_down() -> void:
-	if hand.is_empty(): return
-	hand.pop_back(); played.append("Coperta"); players[current_player].coins += 2
-	_log("%s gioca una carta coperta e guadagna 2 monete." % players[current_player].name)
-	_end_turn()
-
-func _city_selected(index: int) -> void:
-	if not awaiting_city: return
-	for button in city_buttons: button.visible = false
-	awaiting_city = false
-	var p: Dictionary = players[current_player]
-	p.city = index
-	if index not in p.explore:
-		p.explore.append(index); p.vp += 1 + int(index/3)
-		_log("%s raggiunge %s e la esplora: +%s PV." % [p.name,CITIES[index].name,1+int(index/3)])
-	else: _log("%s torna a %s." % [p.name,CITIES[index].name])
-	_resolve_chain("Viaggio")
-	_end_turn()
-
-func _ai_turn() -> void:
-	if players.is_empty() or not players[current_player].is_ai: return
-	var choices := ["Viaggio","Amicizia","Ispirazione"]
-	var action: String = choices[rng.randi_range(0,choices.size()-1)]
-	var p: Dictionary = players[current_player]
-	if int(p.automa_kind) == 0:
-		_ai_player_turn(p)
-		return
-	match action:
-		"Viaggio":
-			if int(p.automa_kind) == 1:
-				_automa_explore(p)
-				_automa_move(p)
-			else:
-				_automa_move(p)
-				_automa_explore(p)
-		"Amicizia": _automa_friend(p)
-		"Ispirazione": _automa_inspiration(p)
-	_log("%s sceglie %s a %s." % [p.name,action,CITIES[p.city].name])
-	_end_turn()
-
-func _ai_player_turn(p: Dictionary) -> void:
-	var action: String = "Viaggio" if int(p.city) < CITIES.size()-1 and rng.randf() < 0.4 else ACTIONS[rng.randi_range(1,ACTIONS.size()-1)]
-	match action:
-		"Viaggio":
-			p.city += 1
-			if int(p.city) not in p.explore: p.explore.append(int(p.city)); p.vp += 1
-		"Amicizia": p.friends += 1; p.coins += 1
-		"Ispirazione": p.ideas[rng.randi_range(0,3)] += 1; p.vp += 1
-		"Festività":
-			if p.ideas.max() > 0: p.journal += 1; p.vp += 2 + int(p.journal)
-	_log("%s sceglie %s a %s." % [p.name,action,CITIES[p.city].name])
-	_end_turn()
-
-func _automa_move(p: Dictionary) -> void:
-	if int(p.city) >= CITIES.size()-1:
-		_automa_failed(p,"è già a Palermo")
-		return
-	p.city += 1
-
-func _automa_explore(p: Dictionary) -> void:
-	if int(p.city) == CITIES.size()-1 or p.explore.size() >= 3:
-		_automa_failed(p,"non può esplorare")
-		return
-	p.explore.append(int(p.city))
-
-func _automa_inspiration(p: Dictionary) -> void:
-	var state: Dictionary = city_state[int(p.city)]
-	var key := "cafe_left" if int(p.automa_kind) == 1 else "cafe_right"
-	if bool(state[key]):
-		_automa_failed(p,"trova il caffè occupato")
+	theme = Stile.tema()
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rete = Rete.new()
+	add_child(rete)
+	rete.evento.connect(_evento_rete)
+	var nomi := ["Stefano", "Computer 1", "Computer 2", "Computer 3", "Computer 4"]
+	for i in 5:
+		posti.append({"attivo": i < 3, "nome": nomi[i], "colore": COLORI[i], "tipo": "umano" if i == 0 else "ia"})
+	var p := rete.parametri()
+	if p.has("stanza"):
+		_entra_schermo(str(p["stanza"]))
 	else:
-		state[key] = true
+		_home()
 
-func _automa_friend(p: Dictionary) -> void:
-	var state: Dictionary = city_state[int(p.city)]
-	if int(p.automa_kind) == 1:
-		if not bool(state.friend_left): state.friend_left = true
-		elif bool(state.friend_tile): state.friend_tile = false
-		elif not bool(state.friend_right): state.friend_right = true
-		else: _automa_failed(p,"non trova spazi Amicizia")
-	else:
-		if not bool(state.friend_right): state.friend_right = true
-		elif bool(state.friend_tile): state.friend_tile = false
-		elif not bool(state.friend_left): state.friend_left = true
-		else: _automa_failed(p,"non trova spazi Amicizia")
+func _pulisci() -> void:
+	for c in get_children():
+		if c != rete:
+			c.queue_free()
+	partita = null
+	stato_rete = null
 
-func _automa_failed(p: Dictionary, reason: String) -> void:
-	automa_failed_slots = (automa_failed_slots % 5) + 1
-	var level := 2 if automa_failed_slots in [1,3] else 3
-	if not market.is_empty(): market.remove_at(min(market.size()-1,level-1))
-	_log("%s: azione fallita (%s). Spazio %s, rimossa una carta Mercato di livello %s." % [p.name,reason,automa_failed_slots,level])
+func _fondo() -> void:
+	var tr := TextureRect.new()
+	tr.texture = Stile.tex("res://assets/img/plance/copertina.webp")
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(tr)
+	var velo := ColorRect.new()
+	velo.color = Color(0.08, 0.05, 0.03, 0.35)
+	velo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(velo)
 
-func _end_turn() -> void:
-	current_player += 1
-	if current_player >= players.size():
-		current_player = 0; turn_no += 1
-		if turn_no > 5: _end_round(); return
-	_save(); _refresh()
+func _scatola(larghezza: float) -> VBoxContainer:
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cc)
+	var pc := PanelContainer.new()
+	var W := get_viewport_rect().size
+	pc.custom_minimum_size = Vector2(minf(larghezza, W.x - 30), 0)
+	cc.add_child(pc)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 12)
+	pc.add_child(vb)
+	return vb
 
-func _end_round() -> void:
-	for p in players:
-		if int(p.automa_kind) == 0 and p.city == 7: p.vp += 3
-		if int(p.automa_kind) > 0: p.explore.clear()
-	_log("[color=#c89b45]Fine round %s: mercato e viaggiatori illustri risolti.[/color]" % round_no)
-	if round_no >= 5:
-		_finish_game(); return
-	round_no += 1; turn_no = 1
-	hand = deck.duplicate(); rng.shuffle(hand); played.clear()
-	_save(); _refresh()
+# ============================================================================ home
+func _home() -> void:
+	_pulisci()
+	_fondo()
+	var vb := _scatola(640)
+	var t := Stile.etichetta("Timeless Journeys", 56, Color("5a2d10"), Stile.titolo())
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var t2 := Stile.etichetta("Il Grand Tour italiano", 30, Stile.INCHIOSTRO, Stile.titolo())
+	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t2)
+	var d := Stile.paragrafo("Da Torino a Palermo, sulle orme dei primi viaggiatori: carte in catena, caffè letterari, lettere, amicizie e Diari di Viaggio. Da 1 a 5 giocatori, contro il computer o online, con le espansioni Napoleone, Villa Diodati e I Romantici.", 580, 20)
+	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(d)
+	vb.add_child(Stile.bottone("Nuova partita", _impostazioni, 28))
+	var salvato := rete.carica("timeless_partita")
+	if salvato != "":
+		vb.add_child(Stile.bottone("Riprendi la partita salvata", _riprendi.bind(salvato), 24))
+	vb.add_child(Stile.bottone("Entra in una partita online", _entra_schermo.bind(""), 24))
+	if rete.web:
+		vb.add_child(Stile.bottone("Recupera il salvataggio online", func(): stato_rete.text = "Cerco il salvataggio..."; rete.chiedi_remoto(), 22))
+	vb.add_child(Stile.bottone("Regole", _regole, 22))
+	stato_rete = Stile.paragrafo("", 580, 19)
+	stato_rete.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(stato_rete)
 
-func _finish_game() -> void:
-	for p in players:
-		if int(p.automa_kind) > 0:
-			p.vp = 0
+func _regole() -> void:
+	_pulisci()
+	_fondo()
+	var vb := _scatola(1150)
+	vb.add_child(Stile.etichetta("Come si gioca", 34, Stile.INCHIOSTRO, Stile.titolo()))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, minf(760, get_viewport_rect().size.y - 200))
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.custom_minimum_size = Vector2(minf(1080, get_viewport_rect().size.x - 80), 0)
+	r.add_theme_font_size_override("normal_font_size", 20)
+	r.add_theme_font_size_override("bold_font_size", 20)
+	r.text = Regole.TESTO
+	sc.add_child(r)
+	vb.add_child(Stile.bottone("Indietro", _home, 22))
+
+# ============================================================================ impostazioni
+func _impostazioni() -> void:
+	_pulisci()
+	_fondo()
+	var W := get_viewport_rect().size
+	var sc := ScrollContainer.new()
+	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(sc)
+	var cc := CenterContainer.new()
+	cc.custom_minimum_size = Vector2(W.x, W.y)
+	sc.add_child(cc)
+	var pc := PanelContainer.new()
+	cc.add_child(pc)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	vb.custom_minimum_size = Vector2(minf(1100, W.x - 40), 0)
+	pc.add_child(vb)
+	vb.add_child(Stile.etichetta("Nuova partita", 38, Color("5a2d10"), Stile.titolo()))
+	# modo
+	var hm := HBoxContainer.new()
+	vb.add_child(hm)
+	var b1 := Stile.bottone("Partita da 2 a 5", func(): solo = false; _impostazioni(), 22, 230)
+	b1.toggle_mode = true
+	b1.button_pressed = not solo
+	hm.add_child(b1)
+	var b2 := Stile.bottone("Solitario con gli Automi", func(): solo = true; _impostazioni(), 22, 290)
+	b2.toggle_mode = true
+	b2.button_pressed = solo
+	hm.add_child(b2)
+	# giocatori
+	vb.add_child(Stile.etichetta("Giocatori", 26, Stile.INCHIOSTRO, Stile.titolo()))
+	var n := 1 if solo else 5
+	for i in n:
+		var r := HBoxContainer.new()
+		vb.add_child(r)
+		var cb := CheckBox.new()
+		cb.button_pressed = posti[i]["attivo"] or i < (1 if solo else 2)
+		cb.disabled = i < (1 if solo else 2)
+		cb.custom_minimum_size = Vector2(40, 40)
+		cb.toggled.connect(func(v): posti[i]["attivo"] = v)
+		if i < 2: posti[i]["attivo"] = true
+		r.add_child(cb)
+		var le := LineEdit.new()
+		le.text = posti[i]["nome"]
+		le.custom_minimum_size = Vector2(240, 0)
+		le.text_changed.connect(func(t): posti[i]["nome"] = t)
+		r.add_child(le)
+		var oc := OptionButton.new()
+		oc.custom_minimum_size = Vector2(150, 0)
+		for k in COLORI.size():
+			oc.add_item(Dati.NOMI_COLORE[COLORI[k]], k)
+		oc.selected = COLORI.find(posti[i]["colore"])
+		oc.item_selected.connect(func(k): posti[i]["colore"] = COLORI[k])
+		r.add_child(oc)
+		if not solo:
+			var ot := OptionButton.new()
+			ot.custom_minimum_size = Vector2(330, 0)
+			ot.add_item("Persona su questo dispositivo", 0)
+			ot.add_item("Computer", 1)
+			ot.add_item("Persona online (altro dispositivo)", 2)
+			ot.selected = {"umano": 0, "ia": 1, "rete": 2}[posti[i]["tipo"]]
+			ot.item_selected.connect(func(k): posti[i]["tipo"] = ["umano", "ia", "rete"][k])
+			r.add_child(ot)
+		else:
+			posti[0]["tipo"] = "umano"
+	# viaggiatori
+	vb.add_child(Stile.etichetta("Viaggiatori Celebri", 26, Stile.INCHIOSTRO, Stile.titolo()))
+	var ov := OptionButton.new()
+	var modi := [["intro", "Partita introduttiva: Montesquieu, Lady Montagu, Mary Shelley"],
+		["A", "Immersione storica: inizio XVIII secolo (Addison, Montagu, Montesquieu)"],
+		["B", "Immersione storica: fine XVIII secolo (Craven, Goethe, Le Brun)"],
+		["C", "Immersione storica: inizio XIX secolo (Byron, Keats, Mary Shelley)"],
+		["D", "Immersione storica: fine XIX secolo (Blessington, Dickens, Twain)"],
+		["caso", "Timeless Jam: tre a caso"], ["scelti", "Viaggio da esperti: li scelgo io"]]
+	for k in modi.size():
+		ov.add_item(modi[k][1], k)
+		if modi[k][0] == modo_vg: ov.selected = k
+	ov.item_selected.connect(func(k): modo_vg = modi[k][0]; _impostazioni())
+	vb.add_child(ov)
+	if modo_vg == "scelti":
+		var gr := GridContainer.new()
+		gr.columns = 4
+		vb.add_child(gr)
+		for vid in Dati.d()["viaggiatori"]:
+			var v: Dictionary = Dati.d()["viaggiatori"][vid]
+			var e2: String = v.get("esp", "")
+			if e2 != "" and not esp[e2]:
+				continue
+			var c2 := CheckBox.new()
+			c2.text = v["nome"]
+			c2.custom_minimum_size = Vector2(250, 36)
+			c2.button_pressed = scelti_vg.has(vid)
+			c2.toggled.connect(func(on):
+				if on and not scelti_vg.has(vid): scelti_vg.append(vid)
+				elif not on: scelti_vg.erase(vid))
+			gr.add_child(c2)
+		vb.add_child(Stile.etichetta("Scegline esattamente tre.", 18, Stile.INCHIOSTRO_DEBOLE))
+	# opzioni
+	vb.add_child(Stile.etichetta("Opzioni", 26, Stile.INCHIOSTRO, Stile.titolo()))
+	var hg := HBoxContainer.new()
+	vb.add_child(hg)
+	hg.add_child(Stile.etichetta("Gazzetta del Viaggiatore:", 20))
+	var og := OptionButton.new()
+	og.custom_minimum_size = Vector2(160, 0)
+	var lati := ["", "A", "B", "C", "D"]
+	for k in lati.size():
+		og.add_item("a caso" if lati[k] == "" else "lato " + lati[k], k)
+		if lati[k] == gazzetta: og.selected = k
+	og.item_selected.connect(func(k): gazzetta = lati[k])
+	hg.add_child(og)
+	hg.add_child(Stile.etichetta("   Computer:", 20))
+	var oi := OptionButton.new()
+	oi.custom_minimum_size = Vector2(170, 0)
+	oi.add_item("bravo", 0)
+	oi.add_item("principiante", 1)
+	oi.selected = 0 if livello_ia == 2 else 1
+	oi.item_selected.connect(func(k): livello_ia = 2 if k == 0 else 1)
+	hg.add_child(oi)
+	var cf := CheckBox.new()
+	cf.text = "Tessere Favore della partita introduttiva (FT01-04, FT07-10)"
+	cf.button_pressed = favori_intro
+	cf.toggled.connect(func(v): favori_intro = v)
+	vb.add_child(cf)
+	var c7 := CheckBox.new()
+	c7.text = "Le persone giocano senza la 7ª carta (sfida più difficile)"
+	c7.button_pressed = senza_settima
+	c7.toggled.connect(func(v): senza_settima = v)
+	vb.add_child(c7)
+	vb.add_child(Stile.etichetta("Espansioni", 26, Stile.INCHIOSTRO, Stile.titolo()))
+	for e in [["napoleone", "Napoleone (Pattuglie Austriache, Soldati Francesi, battaglie e tre nuovi viaggiatori)"],
+			["diodati", "Una Notte di Terrore a Villa Diodati (i Mostri)"],
+			["romantici", "I Romantici (Rousseau, Stendhal, Andersen, Liszt, Percy Shelley)"]]:
+		var ce := CheckBox.new()
+		ce.text = e[1]
+		ce.button_pressed = esp[e[0]]
+		ce.toggled.connect(func(v): esp[e[0]] = v; if modo_vg == "scelti" or modo_vg == "caso": _impostazioni())
+		vb.add_child(ce)
+	stato_rete = Stile.paragrafo("", 1000, 19, Color("8a2a14"))
+	vb.add_child(stato_rete)
+	var hb := HBoxContainer.new()
+	vb.add_child(hb)
+	hb.add_child(Stile.bottone("Indietro", _home, 24, 160))
+	hb.add_child(Stile.bottone("Si parte!", _parti, 28, 260))
+
+func _opzioni_partita() -> Dictionary:
+	var gs: Array = []
+	var sette: Array = []
+	var usati := {}
+	for i in (1 if solo else 5):
+		var p: Dictionary = posti[i]
+		if not (p["attivo"] or i < (1 if solo else 2)):
 			continue
-		var exploration_score: int = [0,1,2,3,4,6,9,13,18][min(p.explore.size(),8)]
-		p.vp += exploration_score + p.journal * (p.journal+1)/2 + p.friends
-	players.sort_custom(func(a,b): return a.vp > b.vp)
-	clear_children(action_box); clear_children(hand_box)
-	for button in city_buttons: button.visible = false
-	var panel := VBoxContainer.new(); panel.position = Vector2(480,250); panel.size = Vector2(500,450); panel.add_theme_constant_override("separation",12); center.add_child(panel)
-	var title := Label.new(); title.text = "IL GRAND TOUR È COMPIUTO"; title.add_theme_font_size_override("font_size",28); title.add_theme_color_override("font_color",GOLD); panel.add_child(title)
-	for i in players.size():
-		var row := Label.new(); row.text = "%s. %s — %s PV" % [i+1,players[i].name,players[i].vp]; row.add_theme_font_size_override("font_size",22); row.add_theme_color_override("font_color",PAPER); panel.add_child(row)
-	_add_menu_button(panel,"Nuovo viaggio",_show_menu)
-	_save()
+		if usati.has(p["colore"]):
+			stato_rete.text = "Due giocatori hanno lo stesso colore."
+			return {}
+		usati[p["colore"]] = true
+		var nome: String = p["nome"].strip_edges()
+		if nome == "":
+			nome = "Giocatore %d" % (gs.size() + 1)
+		gs.append({"nome": nome.substr(0, 16), "colore": p["colore"], "tipo": p["tipo"] if not solo else "umano"})
+		sette.append(not (senza_settima and p["tipo"] != "ia"))
+	if solo and usati.size() > 0:
+		# gli Automi prendono due colori liberi diversi dal grigio
+		pass
+	var o := {"giocatori": gs, "solo": solo, "seme": int(Time.get_unix_time_from_system()) ^ randi(), "esp": esp.duplicate(),
+		"gazzetta": gazzetta, "favori_intro": favori_intro, "settima": sette}
+	if modo_vg == "scelti":
+		if scelti_vg.size() != 3:
+			stato_rete.text = "Scegli esattamente tre Viaggiatori Celebri."
+			return {}
+		o["viaggiatori"] = scelti_vg.duplicate()
+	else:
+		o["modo_viaggiatori"] = modo_vg
+	return o
 
-func _save() -> void:
-	if players.is_empty(): return
-	var data := {"mode":mode,"room":room_code,"round":round_no,"turn":turn_no,"current":current_player,"players":players,"deck":deck,"hand":hand,"played":played,"city_state":city_state,"automa_failed_slots":automa_failed_slots}
-	firebase.salva_locale(data)
-	if mode == "online" and room_code != "": firebase.salva_cloud(room_code,data)
+func _parti() -> void:
+	var o := _opzioni_partita()
+	if o.is_empty():
+		return
+	var online := 0
+	for g in o["giocatori"]:
+		if g["tipo"] == "rete": online += 1
+	if online > 0:
+		_apri_stanza(o, online)
+		return
+	var s := Motore.nuova(o)
+	_gioca(s, "locale", 0)
 
-func _continue_game() -> void:
-	var data := firebase.carica_locale()
-	if data.is_empty(): _notify("Nessuna partita salvata"); return
-	mode = data.get("mode","locale"); room_code = data.get("room",""); round_no = int(data.get("round",1)); turn_no = int(data.get("turn",1)); current_player = int(data.get("current",0)); players = data.get("players",[]); deck.assign(data.get("deck",[])); hand.assign(data.get("hand",[])); played.assign(data.get("played",[])); city_state = data.get("city_state",[]); automa_failed_slots = int(data.get("automa_failed_slots",0))
-	clear_children(center); _layout_city_buttons(); _log("Partita ripristinata."); _refresh()
+func _gioca(s: Dictionary, modo: String, posto: int) -> void:
+	_pulisci()
+	partita = Partita.new()
+	partita.livello_ia = livello_ia
+	add_child(partita)
+	partita.esci.connect(_esci_partita)
+	partita.avvia(s, modo, rete, posto)
+	partita._dopo()
 
-func _notify(message: String) -> void:
-	toast.text = message
-	var timer := get_tree().create_timer(4.0)
-	timer.timeout.connect(func(): if toast.text == message: toast.text = "")
+func _esci_partita() -> void:
+	if partita and partita.modo != "locale":
+		rete.chiudi()
+	_home()
 
-func _log(message: String) -> void:
-	log_label.append_text(message+"\n")
-	log_label.scroll_to_line(max(0,log_label.get_line_count()-5))
+func _riprendi(j: String) -> void:
+	var d = JSON.parse_string(j)
+	if not d is Dictionary or not d.has("s"):
+		if stato_rete: stato_rete.text = "Il salvataggio non si legge."
+		return
+	var s: Dictionary = d["s"]
+	if d.get("modo", "locale") == "host":
+		# la partita online riprende sullo stesso dispositivo: i posti online diventano del computer
+		for g in s["giocatori"]:
+			if g["tipo"] == "rete":
+				g["tipo"] = "ia"
+	_gioca(s, "locale", int(d.get("io", 0)))
 
-func clear_children(node: Node) -> void:
-	for child in node.get_children(): child.queue_free()
+# ============================================================================ online: chi ospita
+func _apri_stanza(o: Dictionary, online: int) -> void:
+	if not rete.web:
+		stato_rete.text = "Il gioco online funziona solo nella versione per browser."
+		return
+	stanza_attesa = o
+	ospiti = []
+	_pulisci()
+	_fondo()
+	var vb := _scatola(720)
+	vb.add_child(Stile.etichetta("Stanza online", 36, Stile.INCHIOSTRO, Stile.titolo()))
+	stato_rete = Stile.paragrafo("Apro la stanza...", 660, 22)
+	vb.add_child(stato_rete)
+	var hb := HBoxContainer.new()
+	vb.add_child(hb)
+	hb.add_child(Stile.bottone("Annulla", func(): rete.chiudi(); _home(), 22, 160))
+	var parti := Stile.bottone("Inizia (i posti vuoti al computer)", _avvia_online, 22, 380)
+	hb.add_child(parti)
+	rete.avvia()
+
+func _testo_stanza() -> void:
+	var o := stanza_attesa
+	var righe: Array = ["Codice della stanza: %s" % rete.codice, "Link da mandare: %s" % rete.url, ""]
+	var k := 0
+	for g in o["giocatori"]:
+		if g["tipo"] == "rete":
+			var chi := "in attesa..."
+			if k < ospiti.size():
+				chi = ospiti[k]["nome"] + " è dentro"
+			righe.append("%s (%s): %s" % [g["nome"], Dati.NOMI_COLORE[g["colore"]], chi])
+			k += 1
+	if stato_rete:
+		stato_rete.text = "\n".join(righe)
+
+func _avvia_online() -> void:
+	var o: Dictionary = stanza_attesa.duplicate(true)
+	if o.is_empty():
+		return
+	var k := 0
+	for g in o["giocatori"]:
+		if g["tipo"] == "rete":
+			if k < ospiti.size():
+				g["uid"] = ospiti[k]["uid"]
+				g["nome"] = String(ospiti[k]["nome"]).substr(0, 16)
+			else:
+				g["tipo"] = "ia"
+			k += 1
+	var s := Motore.nuova(o)
+	stanza_attesa = {}
+	var mio := 0
+	for i in s["giocatori"].size():
+		if s["giocatori"][i]["tipo"] == "umano":
+			mio = i
+			break
+	_gioca(s, "host", mio)
+
+# ============================================================================ online: ospite
+func _entra_schermo(codice: String) -> void:
+	_pulisci()
+	_fondo()
+	var vb := _scatola(620)
+	vb.add_child(Stile.etichetta("Entra in una partita online", 32, Stile.INCHIOSTRO, Stile.titolo()))
+	vb.add_child(Stile.paragrafo("Scrivi il codice di 4 lettere che ti ha dato chi ospita e il tuo nome.", 560, 20))
+	var lc := LineEdit.new()
+	lc.placeholder_text = "CODICE"
+	lc.text = codice
+	lc.max_length = 4
+	vb.add_child(lc)
+	var ln := LineEdit.new()
+	ln.placeholder_text = "Il tuo nome"
+	ln.text = nome_ospite
+	ln.max_length = 16
+	vb.add_child(ln)
+	stato_rete = Stile.paragrafo("", 560, 20)
+	vb.add_child(stato_rete)
+	var hb := HBoxContainer.new()
+	vb.add_child(hb)
+	hb.add_child(Stile.bottone("Indietro", _home, 22, 160))
+	hb.add_child(Stile.bottone("Entra", func(): _entra(lc.text, ln.text), 24, 200))
+
+func _entra(c: String, nome: String) -> void:
+	c = c.strip_edges().to_upper()
+	if c.length() != 4:
+		stato_rete.text = "Il codice della stanza ha 4 lettere."
+		return
+	if not rete.web:
+		stato_rete.text = "Il gioco online funziona solo nella versione per browser."
+		return
+	nome_ospite = nome.strip_edges() if nome.strip_edges() != "" else "Viaggiatore"
+	stato_rete.text = "Entro nella stanza %s..." % c
+	rete.entra(c, nome_ospite)
+
+func _evento_rete(e: Dictionary) -> void:
+	match e.get("e"):
+		"stanza":
+			_testo_stanza()
+		"entra":
+			if not stanza_attesa.is_empty():
+				var uid := str(e.get("uid", ""))
+				var gia := false
+				for o in ospiti:
+					if o["uid"] == uid:
+						o["nome"] = str(e.get("nome", ""))
+						gia = true
+				var posti_online := 0
+				for g in stanza_attesa["giocatori"]:
+					if g["tipo"] == "rete": posti_online += 1
+				if not gia and ospiti.size() < posti_online:
+					ospiti.append({"uid": uid, "nome": str(e.get("nome", "Ospite"))})
+				_testo_stanza()
+		"azione":
+			if partita and partita.modo == "host":
+				var a = JSON.parse_string(str(e.get("p", "")))
+				if a is Dictionary:
+					partita.mossa_remota(a, str(e.get("uid", "")))
+		"dentro":
+			mio_uid = str(e.get("uid", ""))
+			if stato_rete:
+				stato_rete.text = "Dentro! Aspetto che chi ospita inizi la partita..."
+		"stato":
+			var d = JSON.parse_string(str(e.get("j", "")))
+			if not d is Dictionary or not d.has("s"):
+				return
+			var st: Dictionary = d["s"]
+			if partita == null:
+				var posto := -1
+				for i in st["giocatori"].size():
+					if st["giocatori"][i].get("uid", "") == mio_uid and mio_uid != "":
+						posto = i
+				if posto < 0:
+					if stato_rete:
+						stato_rete.text = "La partita è iniziata ma non c’è un posto per te."
+					return
+				_gioca(st, "ospite", posto)
+			else:
+				partita.ricevi(st)
+		"salvataggio":
+			var j := str(e.get("j", ""))
+			if j == "":
+				if stato_rete: stato_rete.text = "Nessuna partita salvata online."
+			else:
+				_riprendi(j)
+		"errore":
+			if stato_rete:
+				stato_rete.text = "Errore: " + str(e.get("msg", ""))

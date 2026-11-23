@@ -1,5 +1,4 @@
 .godot/
-firebase_config.json
 build/
+*.tmp
 .DS_Store
-

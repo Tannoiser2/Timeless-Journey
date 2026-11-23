@@ -1,28 +1,41 @@
-# Timeless Journey — Il Grand Tour Italiano
+# Timeless Journeys: The Italian Grand Tour - versione digitale
 
-Versione digitale in Godot 4 del gioco da tavolo *Timeless Journeys: The Italian Grand Tour*.
+*Timeless Journeys: The Italian Grand Tour* di Nestore Mangone e Andrea Robbiani (Lirius Games, illustrazioni di Laura Guglielmo), in Godot 4.7, per la ludoteca digitale.
 
-## Giocare
+Da Torino a Palermo sulle orme dei primi turisti del Grand Tour: carte in catena, esplorazioni, abitanti, lettere, caffè letterari, Diari di Viaggio e Viaggiatori Celebri della Gazzetta.
 
-- Aprire `project.godot` con Godot 4.4 o successivo e premere **F6/F5**.
-- Modalità incluse: solitario con due automi, partita contro 3 IA, pass-and-play 2–5 giocatori.
-- Le partite vengono salvate automaticamente in `user://partita.json`.
+## Cosa c'è
 
-## Firebase e multiplayer
+- **Regolamento italiano completo**: cinque round con Fase di Azione, Viaggiatori Celebri, Mercato e Riorganizzazione; carte scoperte e coperte, catene di azioni, mercato a livelli secondo le categorie giocate, limite di 8 carte, punteggio finale (tessere Esplorazione, Diari, carte Avanzate, Affinità Elettive, maggioranze della Gazzetta), parità vinte da chi è più a sud.
+- **Tutto il materiale**: tabellone con le strade e i loro costi (navi da Palermo comprese), 8 plance Città con i caffè, 12 tessere Favore, 48 tessere Esplorazione, 7 tessere Amico, 16 Diari di Viaggio, 4 lati della Gazzetta, 12 Viaggiatori Celebri con le loro abilità, 81 carte Azione Avanzata, Dipinti di Vigée Le Brun, segnalini Esperienza.
+- **Modi di scegliere i viaggiatori**: partita introduttiva, Immersione Storica (quattro periodi), Timeless Jam (a caso), Viaggio da Esperti (li scegli tu).
+- **Da 1 a 5 giocatori**: persone sullo stesso dispositivo, computer, persone online (stanze su Firebase, radice `timeless`).
+- **Solitario ufficiale** con i due Automi (Alfa e Beta), azioni fallite che svuotano il Mercato e valutazione finale del viaggio.
+- **Espansioni**: Napoleone (Pattuglie Austriache, Soldati Francesi, battaglie, Napoleone, Paolina Bonaparte, Ugo Foscolo), Una Notte di Terrore a Villa Diodati (i quattro Mostri), I Romantici (Rousseau, Stendhal, Andersen, Liszt, Percy Shelley).
+- **Tabellone in 2D e in 3D**: si sposta, si ingrandisce e (in 3D) si ruota anche con le dita su iPad.
+- Partita salvata a ogni mossa nel browser e su Firebase a ogni round.
 
-1. Creare un progetto Firebase e abilitare **Realtime Database**.
-2. Copiare `firebase_config.example.json` in `firebase_config.json`.
-3. Inserire `database_url` e la chiave Web.
-4. Applicare regole Firebase autenticate/temporanee adatte al proprio ambiente prima della pubblicazione.
+## Note sul materiale
 
-Senza configurazione Firebase il gioco rimane completamente giocabile in locale. La modalità online crea una stanza e usa il Realtime Database per persisterne lo stato.
+- La grafica viene dal modulo Tabletop Simulator. Il modulo usa una versione più vecchia delle carte: le carte 47, 50 e 54 sono state corrette (3 PV ogni 2 carte, come nel regolamento italiano), le carte 15, 16, 31, 32 e 59 dell'edizione italiana sono state composte con le icone originali, e il numero in basso a destra è quello del regolamento italiano (`tools/componi_carte.py`).
+- Il regolamento delle espansioni non riporta il testo delle carte Mostro di Villa Diodati e delle carte Azione Speciale di Andersen: nel gioco hanno effetti **provvisori** (in `tools/dati.py`, sezioni `MOSTRI` e `ANDERSEN`), da sostituire quando ci sono le carte vere. Le espansioni non hanno grafica nel modulo: le loro carte sono disegnate dal gioco.
 
-## Esportazione Web
+## Struttura
 
-```bash
-godot --headless --path . --export-release Web build/web/index.html
-```
+- `scripts/motore.gd` - le regole (stato JSON puro, riproducibile con un seme), Automi del solitario, espansioni
+- `scripts/ia.gd` - il giocatore guidato dal computer
+- `scripts/mappa.gd`, `scripts/mappa3d.gd` - il tabellone in 2D e in 3D
+- `scripts/plancia.gd` - plance delle città, Gazzetta, Mercato, Diari
+- `scripts/mano.gd`, `scripts/giocatori.gd`, `scripts/partita.gd`, `scripts/main.gd` - interfaccia, partita, menu, online
+- `assets/dati/gioco.json` - i dati del gioco, generati da `tools/dati.py`
+- `tools/prepara_grafica.py`, `tools/componi_carte.py` - preparazione della grafica dal modulo TTS
 
-Il workflow GitHub Pages esporta e pubblica automaticamente il progetto a ogni push su `main`.
+## Prove
 
-## Crediti e materiali
+- `godot --headless --path . -s tests/sim.gd -- 3 3` - partite automatiche (partite, giocatori, espansioni `ndr`, `solo`)
+- `xvfb-run -a godot --path . -s tests/foto.gd -- /tmp/foto 1920 1080` - fotografie dell'interfaccia
+- `python3 tools/controlla_glifi.py` - controllo dei caratteri nei font
+
+## Pubblicazione
+
+Solo a richiesta: Actions, Pubblica, Run workflow, oppure un commit con `[pubblica]` nel messaggio. La ludoteca privata su Cloudflare lo prende da sé.
