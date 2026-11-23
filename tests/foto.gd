@@ -30,6 +30,14 @@ func _init() -> void:
 	var p: Partita = main.partita
 	await create_timer(0.6).timeout
 	await _foto(dir, "2_inizio")
+	if a.size() >= 5 and a[4] == "breve":
+		p._vista("gazzetta")
+		await _foto(dir, "2_gazzetta")
+		p._cambia_3d()
+		await create_timer(0.5).timeout
+		await _foto(dir, "2_3d")
+		quit()
+		return
 	# il giocatore gioca come il computer, gli altri giocano da soli
 	var t0 := Time.get_ticks_msec()
 	var foto_fatte := {}

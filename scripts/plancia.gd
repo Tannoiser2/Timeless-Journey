@@ -235,7 +235,46 @@ func _disegna_gazzetta() -> void:
 		y = _paragrafo(v["testo"], Vector2(x0, y), size.x - x0 - 10, 18, Stile.CARTA) + 4
 		var premio: Array = D["gazzetta"][s["gazzetta"]]["premi"][col]
 		y = _paragrafo("Incontro: " + Motore.testo_eff(premio), Vector2(x0, y), size.x - x0 - 10, 18, Color("e8d6a8")) + 14
+	y = _espansioni(x0, y)
 	y = _paragrafo("Esperienze: Duello d’Onore (premio doppio, poi niente più incontri con lui), Una Notte da Ricordare (vale doppio nelle maggioranze), Perso nell’Ammirazione (a fine round perdi 1 PV per riavere il premio), Affinità Elettive (2 PV, 6 PV se entrambe con lo stesso viaggiatore). Maggioranze di fine partita per colonna: 5/3/1 PV.", Vector2(x0, y), size.x - x0 - 10, 16, Color("cbb892"))
+
+func _espansioni(x0: float, y: float) -> float:
+	var D := Dati.d()
+	var w := size.x - x0 - 10
+	if s["esp"]["napoleone"]:
+		var k: String = s["battaglia"]["attuale"]
+		var soldati := 0
+		var chi: Array = []
+		for gg in s["giocatori"]:
+			soldati += int(gg["soldati"])
+			if int(gg["soldati"]) > 0:
+				chi.append("%s %d" % [gg["nome"], int(gg["soldati"])])
+			if gg["pattuglie"].size():
+				chi.append("%s: %d Pattugli%s" % [gg["nome"], gg["pattuglie"].size(), "a" if gg["pattuglie"].size() == 1 else "e"])
+		if k != "":
+			var b: Dictionary = D["battaglie"][k]
+			y = _paragrafo("Battaglia %s: serve forza %d (Soldati Francesi ora %d). Premio per ogni Soldato: %s. Se vinta: %d e %d PV ai primi due." % [k, int(s["nn"]) + int(b["mod"]), soldati, Motore.testo_eff(b["premio"]), int(b["pv"][0]), int(b["pv"][1])], Vector2(x0, y), w, 17, Color("e8c48a"))
+		if chi.size():
+			y = _paragrafo(", ".join(chi), Vector2(x0, y), w, 17, Color("e8c48a"))
+		y += 6
+	if s["esp"]["diodati"]:
+		var righe: Array = []
+		for cat in ["V", "A", "I", "F"]:
+			var m: Dictionary = D["mostri"][cat]
+			var dove := "nella Villa"
+			if int(s["villa"][cat]) >= 0:
+				dove = "con " + s["giocatori"][int(s["villa"][cat])]["nome"]
+			righe.append("%s (%s) %s" % [m["nome"], Dati.CATEGORIE[cat], dove])
+		y = _paragrafo("Villa Diodati%s: %s." % [" (Risvegliata)" if int(s["round"]) >= 4 else "", "; ".join(righe)], Vector2(x0, y), w, 17, Color("d9a0a0"))
+		y += 6
+	if s["viaggiatori"].has("andersen"):
+		var libere: Array = []
+		for k2 in 4:
+			if int(s["andersen"][k2]) < 0:
+				libere.append(D["andersen"][k2]["nome"])
+		y = _paragrafo("Riserva Andersen: %s." % (", ".join(libere) if libere.size() else "vuota"), Vector2(x0, y), w, 17, Color("b8d0e0"))
+		y += 6
+	return y
 
 func _paragrafo(t: String, pos: Vector2, w: float, dim: int, col: Color, f: Font = null) -> float:
 	if f == null:

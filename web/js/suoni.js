@@ -1,4 +1,4 @@
-// Suoni sintetizzati (niente file audio): dado, motori, allarme/schianto, atterraggio, tocca a te.
+// Suoni sintetizzati (niente file audio): carta giocata, monete, fine del viaggio, tocca a te.
 let ctx = null;
 export function sbloccaAudio() {
   try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); } catch (e) { /* ok */ }
@@ -36,11 +36,8 @@ function rumore(dur, vol = 0.2, quando = 0, filtro = 1200) {
 export function suona(n) {
   if (!ctx) return;
   switch (n) {
-    case 'dado': for (let i = 0; i < 5; i++) rumore(0.05, 0.25, i * 0.09, 3000); break;
-    case 'nero': nota(300, 0.12, 'square', 0.06); break;
-    case 'motore': nota(90, 0.8, 'sawtooth', 0.06, 0, 160); rumore(0.8, 0.12, 0, 700); break;
-    case 'botto': rumore(0.5, 0.5, 0, 500); nota(90, 0.4, 'square', 0.12, 0, 40); break;
-    case 'gomme': nota(900, 0.6, 'sawtooth', 0.07, 0, 500); rumore(0.6, 0.15, 0, 4000); break;
+    case 'carta': rumore(0.12, 0.18, 0, 2500); break;
+    case 'moneta': nota(1320, 0.12, 'triangle', 0.12); nota(1760, 0.2, 'triangle', 0.1, 0.06); break;
     case 'arrivo': [523, 659, 784, 1047].forEach((f, i) => nota(f, 0.25, 'triangle', 0.15, i * 0.13)); break;
     case 'tocca': nota(660, 0.15, 'triangle', 0.2); nota(880, 0.25, 'triangle', 0.2, 0.16); break;
     default: nota(440, 0.1);

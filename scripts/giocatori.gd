@@ -59,9 +59,18 @@ func _draw() -> void:
 		x += 46
 		_icona("res://assets/img/segnalini/caffe_%s.webp" % gg["colore"], Vector2(x, yy), str(int(gg["caffe"])))
 		x += 46
-		var testo := "carte %d  tessere %d  esp. %d" % [gg["mano"].size(), gg["tessere"].size(), gg["esp"].size()]
-		if x + 120 < r.end.x:
-			draw_string(Stile.testo(), Vector2(x + 4, yy + 22), testo, HORIZONTAL_ALIGNMENT_LEFT, r.end.x - x - 8, 15, Stile.INCHIOSTRO_DEBOLE)
+		# carte giocate nel round: rettangolini del colore della categoria
+		var xa := x + 4
+		for a in gg["area"]:
+			if xa + 14 > r.end.x - 4:
+				break
+			var cat: String = "giu" if a["giu"] else Motore.info(a["id"])["cat"]
+			var cr := Rect2(xa, yy + 2, 14, 22)
+			draw_rect(cr, Stile.COLORE_CAT[cat])
+			draw_rect(cr, Color(0.25, 0.18, 0.1), false, 1.5)
+			xa += 17
+		if gg["area"].is_empty() and x + 100 < r.end.x:
+			draw_string(Stile.testo(), Vector2(x + 4, yy + 22), "mano %d, tessere %d" % [gg["mano"].size(), gg["tessere"].size()], HORIZONTAL_ALIGNMENT_LEFT, r.end.x - x - 8, 15, Stile.INCHIOSTRO_DEBOLE)
 		y += 78
 	for au in s.get("automi", []):
 		pass

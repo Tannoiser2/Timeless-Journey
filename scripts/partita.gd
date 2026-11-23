@@ -171,29 +171,52 @@ func _disponi() -> void:
 	var top := 58.0
 	barra.position = Vector2.ZERO
 	barra.size = Vector2(W, top)
-	var hb := clampf(H * 0.26, 220, 330)
-	var wl := minf(W * 0.31, (H - top) * 1080.0 / 1825.0 + 6)
-	var wr := clampf(W * 0.215, 330, 470)
-	mappa.position = Vector2(0, top)
-	mappa.size = Vector2(wl, H - top)
-	mappa3d.position = mappa.position
-	mappa3d.size = mappa.size
-	plancia.position = Vector2(wl + 6, top + 6)
-	plancia.size = Vector2(W - wl - wr - 12, H - top - hb - 12)
-	mano.position = Vector2(wl + 4, H - hb)
-	mano.size = Vector2(W - wl - 4, hb)
 	var np: int = s["giocatori"].size() if not s.is_empty() else 2
 	var hp := pannello.altezza_per(np)
-	pannello.position = Vector2(W - wr, top + 4)
-	pannello.size = Vector2(wr - 4, hp)
 	var pd: Control = get_node("PannelloDecisioni")
 	var pr: Control = get_node("PannelloRegistro")
-	var resto := H - hb - top - hp - 14
-	var hreg := clampf(resto * 0.3, 90, 220)
-	pd.position = Vector2(W - wr, top + hp + 6)
-	pd.size = Vector2(wr - 4, resto - hreg - 6)
-	pr.position = Vector2(W - wr, H - hb - hreg - 4)
-	pr.size = Vector2(wr - 4, hreg)
+	var wr := clampf(W * 0.215, 330, 470)
+	if H > W * 1.1:
+		# verticale (iPad in piedi): mappa e colonna in alto, plancia larga in mezzo, mano in basso
+		var hb2 := clampf(H * 0.15, 220, 300)
+		var hpl := minf((W - 12) / 1.75 + 96, (H - top - hb2) * 0.55)
+		var h1 := H - top - hb2 - hpl - 12
+		var wl2 := minf(h1 * 1080.0 / 1825.0, W * 0.45)
+		mappa.position = Vector2(0, top)
+		mappa.size = Vector2(wl2, h1)
+		var wr2 := W - wl2 - 8
+		pannello.position = Vector2(wl2 + 4, top + 4)
+		pannello.size = Vector2(wr2, hp)
+		var resto2 := h1 - hp - 10
+		var hreg2 := clampf(resto2 * 0.3, 80, 200)
+		pd.position = Vector2(wl2 + 4, top + hp + 6)
+		pd.size = Vector2(wr2, resto2 - hreg2 - 4)
+		pr.position = Vector2(wl2 + 4, top + hp + 6 + resto2 - hreg2)
+		pr.size = Vector2(wr2, hreg2)
+		plancia.position = Vector2(6, top + h1 + 6)
+		plancia.size = Vector2(W - 12, hpl)
+		mano.position = Vector2(0, H - hb2)
+		mano.size = Vector2(W, hb2)
+		wr = wr2
+	else:
+		var hb := clampf(H * 0.26, 220, 310)
+		var wl := minf(W * 0.31, (H - top) * 1080.0 / 1825.0 + 6)
+		mappa.position = Vector2(0, top)
+		mappa.size = Vector2(wl, H - top)
+		plancia.position = Vector2(wl + 6, top + 6)
+		plancia.size = Vector2(W - wl - wr - 12, H - top - hb - 12)
+		mano.position = Vector2(wl + 4, H - hb)
+		mano.size = Vector2(W - wl - 4, hb)
+		pannello.position = Vector2(W - wr, top + 4)
+		pannello.size = Vector2(wr - 4, hp)
+		var resto := H - hb - top - hp - 14
+		var hreg := clampf(resto * 0.3, 90, 220)
+		pd.position = Vector2(W - wr, top + hp + 6)
+		pd.size = Vector2(wr - 4, resto - hreg - 6)
+		pr.position = Vector2(W - wr, H - hb - hreg - 4)
+		pr.size = Vector2(wr - 4, hreg)
+	mappa3d.position = mappa.position
+	mappa3d.size = mappa.size
 	titolo_dec.custom_minimum_size = Vector2(wr - 40, 0)
 	if popup:
 		popup.size = Vector2(W, H)
@@ -240,9 +263,20 @@ func _scegli(id: String) -> void:
 
 func _applica(id: String) -> void:
 	var prima_round: int = int(s["round"])
+	var prima_log: int = s["log"].size()
 	if not Motore.applica(s, id):
 		return
+	_suoni(prima_log)
 	_dopo(prima_round != int(s["round"]))
+
+func _suoni(prima_log: int) -> void:
+	if rete == null:
+		return
+	var chi := chi_deve()
+	if chi >= 0 and _tocca_a_me(chi) and s["attesa"].get("tipo", "") == "turno" and s["giocatori"].size() > 1:
+		rete.suono("tocca")
+	elif s["log"].size() != prima_log:
+		rete.suono("carta")
 
 func _dopo(round_nuovo := false) -> void:
 	if modo == "host" and rete:
@@ -269,8 +303,8 @@ func mossa_remota(a: Dictionary, uid: String) -> void:
 func ricevi(stato: Dictionary) -> void:
 	var prima: int = s.get("log", []).size()
 	s = stato
-	if rete and s["log"].size() != prima and chi_deve() == io:
-		rete.suono("turno")
+	if rete and s["log"].size() != prima:
+		rete.suono("tocca" if chi_deve() == io and s["attesa"].get("tipo", "") == "turno" else "carta")
 	_aggiorna()
 	if s["fine"] and popup == null:
 		_mostra_punti()
