@@ -39,6 +39,18 @@ func _init() -> void:
 		p._cambia_3d()
 		await create_timer(0.5).timeout
 		await _foto(dir, "2_3d")
+		var m3: Mappa3D = p.mappa3d
+		m3.yaw = 40.0
+		m3.pitch = 18.0
+		m3.dist = 4.0
+		m3.bersaglio = m3.a3d(Vector2(464, 620))
+		m3._camera()
+		await create_timer(0.3).timeout
+		await _foto(dir, "2_3d_vicino")
+		m3.yaw = -60.0
+		m3._camera()
+		await create_timer(0.3).timeout
+		await _foto(dir, "2_3d_vicino2")
 		quit()
 		return
 	# il giocatore gioca come il computer, gli altri giocano da soli

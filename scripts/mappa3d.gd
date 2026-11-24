@@ -7,7 +7,8 @@ extends SubViewportContainer
 signal nodo_cliccato(nodo: String)
 signal citta_cliccata(citta: String)
 
-const SC := 0.01   # pixel del tabellone -> metri
+const SC := 0.01   # pixel del tabellone -> unità 3D (il tabellone è largo 10,8 unità, circa 40 cm)
+const SPESSORE := 0.27   # i pezzi di legno sono spessi circa 1 cm
 
 var vp: SubViewport
 var cam: Camera3D
@@ -154,18 +155,15 @@ func aggiorna(stato: Dictionary, ev: Dictionary) -> void:
 		var st := a3d(Vector2(D["stelle"][c][0], D["stelle"][c][1]))
 		var k := 0
 		for vid in per_citta[c]:
-			var sp := Sprite3D.new()
+			# sagoma di legno spessa 1 cm, ferma sul tabellone (non segue la camera)
 			var tx := Stile.tex("res://assets/img/viaggiatori/sagoma_%s.webp" % vid)
+			var tinta := Color.WHITE
 			if tx == null:
 				tx = Stile.tex("res://assets/img/viaggiatori/sagoma_byron.webp")
-				sp.modulate = Color(0.75, 0.7, 0.65)
-			sp.texture = tx
-			sp.pixel_size = 1.25 / tx.get_height()
-			sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-			sp.shaded = false
-			sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-			sp.position = st + Vector3(k * 0.45, 0.62, k * 0.1)
-			dinamici.add_child(sp)
+				tinta = Color(0.75, 0.7, 0.65)
+			var pezzo := _sagoma_spessa(tx, 1.25, tinta)
+			pezzo.position = st + Vector3(k * 0.45, 0.06, k * 0.1)
+			dinamici.add_child(pezzo)
 			var basetta := MeshInstance3D.new()
 			var cy := CylinderMesh.new()
 			cy.top_radius = 0.22
@@ -248,15 +246,14 @@ func _meeple(col: Color) -> Node3D:
 	for p in pts:
 		p2.append(Vector2(p.x, -p.y) * 0.0062)
 	m.polygon = p2
-	m.depth = 0.14
+	m.depth = SPESSORE
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = col
 	mat.roughness = 0.55
 	m.material = mat
 	var nodo := Node3D.new()
-	m.position = Vector3(0, 44 * 0.0062, 0.07)
+	m.position = Vector3(0, 44 * 0.0062, SPESSORE / 2)
 	nodo.add_child(m)
-	nodo.rotation.y = deg_to_rad(yaw)
 	return nodo
 
 func _process(d: float) -> void:
@@ -298,7 +295,6 @@ func _gui_input(e: InputEvent) -> void:
 			pitch += e.relative.y * 0.2
 			_mosso += e.relative.length()
 		_camera()
-		_aggiorna_meeple()
 		accept_event()
 		return
 	if e is InputEventMouseButton:
@@ -325,18 +321,32 @@ func _gui_input(e: InputEvent) -> void:
 				yaw -= e.relative.x * 0.3
 				pitch += e.relative.y * 0.2
 				_camera()
-				_aggiorna_meeple()
 		elif _destro:
 			_sposta(e.relative)
 			_camera()
 		accept_event()
 
-func _aggiorna_meeple() -> void:
-	if dinamici == null:
-		return
-	for c in dinamici.get_children():
-		if c.get_child_count() == 1 and c.get_child(0) is CSGPolygon3D:
-			c.rotation.y = deg_to_rad(yaw)
+## sagoma con spessore: strati della stessa figura uno dietro l'altro (i centrali scuri come il bordo del legno)
+func _sagoma_spessa(tx: Texture2D, altezza: float, tinta: Color) -> Node3D:
+	var nodo := Node3D.new()
+	var strati := 17
+	for i in strati:
+		var sp := Sprite3D.new()
+		sp.texture = tx
+		sp.pixel_size = altezza / tx.get_height()
+		sp.shaded = true
+		sp.double_sided = true
+		sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		sp.centered = true
+		sp.offset = Vector2(0, tx.get_height() / 2.0)
+		var z := -SPESSORE / 2 + SPESSORE * i / (strati - 1)
+		sp.position = Vector3(0, 0, z)
+		if i == 0 or i == strati - 1:
+			sp.modulate = tinta
+		else:
+			sp.modulate = Color(0.62, 0.45, 0.28) * tinta
+		nodo.add_child(sp)
+	return nodo
 
 func _sposta(rel: Vector2) -> void:
 	var f := dist * 0.0016
