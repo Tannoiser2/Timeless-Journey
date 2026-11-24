@@ -287,30 +287,44 @@ func _percorsi() -> void:
 	var D := Dati.d()
 	var r := int(s["round"])
 	var spost := [Vector2(-7, -7), Vector2(0, 0), Vector2(7, 7)]
-	# prima le linee (sotto), poi i numeri
+	# prima le linee (sotto), poi i numeri. Ogni viaggiatore ha la sua corsia: le tre linee corrono affiancate
 	for col in 3:
 		if vg_sel >= 0 and vg_sel != col:
 			continue
 		var citta: Array = D["gazzetta"][s["gazzetta"]]["citta"][col]
 		var col_c: Color = COL_VG[col]
+		var corsia := (col - 1) * (0.0 if vg_sel == col else 6.5)
 		for i in 4:
 			if citta[i] == citta[i + 1]:
 				continue
 			var nodi := Dati.strada(citta[i], citta[i + 1], 9)
-			var pts := PackedVector2Array()
-			for n in nodi:
-				pts.append(Vector2(D["nodi"][n][0], D["nodi"][n][1]) + spost[col])
+			var grezzo := PackedVector2Array()
+			for k in nodi.size() - 1:
+				var t := Dati.tratto(nodi[k], nodi[k + 1])
+				for j in t.size():
+					if grezzo.size() and j == 0:
+						continue
+					grezzo.append(t[j])
+			var pts := _affianca(grezzo, corsia)
 			var a := 0.95 if i + 1 >= r else 0.3
-			var w := 7.0 if vg_sel == col else 5.0
-			draw_polyline(pts, Color(0, 0, 0, 0.4 * a), w + 4, true)
+			var w := 6.0 if vg_sel == col else 4.5
+			draw_polyline(pts, Color(0.1, 0.06, 0.03, 0.55 * a), w + 3, true)
 			draw_polyline(pts, Color(col_c, a), w, true)
-			# freccia sull'ultimo tratto, prima della città d'arrivo
-			var p1: Vector2 = pts[pts.size() - 2]
-			var p2: Vector2 = pts[pts.size() - 1]
-			var m := p1.lerp(p2, 0.55)
-			var dir := (p2 - p1).normalized()
-			var nrm := Vector2(-dir.y, dir.x)
-			draw_colored_polygon(PackedVector2Array([m + dir * 16, m - dir * 8 + nrm * 11, m - dir * 8 - nrm * 11]), Color(col_c, a))
+			# freccia a metà del percorso
+			var lung := 0.0
+			for k2 in pts.size() - 1:
+				lung += pts[k2].distance_to(pts[k2 + 1])
+			var fatto := 0.0
+			for k2 in pts.size() - 1:
+				var seg := pts[k2].distance_to(pts[k2 + 1])
+				if fatto + seg >= lung / 2 and seg > 0:
+					var m := pts[k2].lerp(pts[k2 + 1], (lung / 2 - fatto) / seg)
+					var dir := (pts[k2 + 1] - pts[k2]).normalized()
+					var nrm := Vector2(-dir.y, dir.x)
+					draw_colored_polygon(PackedVector2Array([m + dir * 15, m - dir * 7 + nrm * 10, m - dir * 7 - nrm * 10]), Color(0.1, 0.06, 0.03, 0.7 * a))
+					draw_colored_polygon(PackedVector2Array([m + dir * 12, m - dir * 5 + nrm * 7.5, m - dir * 5 - nrm * 7.5]), Color(col_c, a))
+					break
+				fatto += seg
 	# numeri dei round: per ogni città un riquadro con i round di ogni viaggiatore
 	var tappe := {}
 	for col in 3:
@@ -338,3 +352,23 @@ func _percorsi() -> void:
 			if att:
 				draw_arc(q, rr + 3, 0, TAU, 28, Color(1, 0.9, 0.5), 3, true)
 			Stile.testo_centrato(self, Stile.titolo(), ROMANI[i2], q + Vector2(0, -1), 15 if i2 < 3 else 13, Color(1, 1, 1, 0.6 if passato else 1.0))
+
+## sposta una linea di lato (a destra se d > 0) mantenendo la forma: corsie affiancate sulla stessa strada
+func _affianca(pts: PackedVector2Array, d: float) -> PackedVector2Array:
+	if absf(d) < 0.01 or pts.size() < 2:
+		return pts
+	var out := PackedVector2Array()
+	for i in pts.size():
+		var n := Vector2.ZERO
+		if i > 0:
+			var t1 := (pts[i] - pts[i - 1]).normalized()
+			n += Vector2(-t1.y, t1.x)
+		if i < pts.size() - 1:
+			var t2 := (pts[i + 1] - pts[i]).normalized()
+			n += Vector2(-t2.y, t2.x)
+		if n.length() < 0.01:
+			out.append(pts[i])
+			continue
+		n = n.normalized()
+		out.append(pts[i] + n * d)
+	return out

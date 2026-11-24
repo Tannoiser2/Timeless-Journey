@@ -4,6 +4,7 @@ extends RefCounted
 
 static var _d: Dictionary = {}
 static var _vicini: Dictionary = {}
+static var _tracciati: Dictionary = {}
 
 static func d() -> Dictionary:
 	if _d.is_empty():
@@ -35,6 +36,26 @@ static func avanzata(num: int) -> Dictionary:
 
 static func viaggiatore(id: String) -> Dictionary:
 	return d()["viaggiatori"][id]
+
+## disegno vero della strada fra due luoghi vicini (dal tabellone, tools/traccia_strade.py), da a verso b
+static func tratto(a: String, b: String) -> PackedVector2Array:
+	if _tracciati.is_empty() and FileAccess.file_exists("res://assets/dati/tracciati.json"):
+		_tracciati = JSON.parse_string(FileAccess.get_file_as_string("res://assets/dati/tracciati.json"))
+	var out := PackedVector2Array()
+	var inverso := false
+	var lista = _tracciati.get(a + "|" + b, null)
+	if lista == null:
+		lista = _tracciati.get(b + "|" + a, null)
+		inverso = true
+	if lista == null:
+		out.append(Vector2(d()["nodi"][a][0], d()["nodi"][a][1]))
+		out.append(Vector2(d()["nodi"][b][0], d()["nodi"][b][1]))
+		return out
+	for q in lista:
+		out.append(Vector2(q[0], q[1]))
+	if inverso:
+		out.reverse()
+	return out
 
 ## strada più breve fra due luoghi (meno tappe, poi meno monete): elenco dei nodi da a a b compresi
 static func strada(a: String, b: String, peso_nave := 1) -> Array:
