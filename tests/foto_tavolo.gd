@@ -28,15 +28,21 @@ func _init() -> void:
 	# i telefoni rispondono come il computer
 	var t0 := Time.get_ticks_msec()
 	var fatto := false
-	while Time.get_ticks_msec() - t0 < 60000:
+	while Time.get_ticks_msec() - t0 < 200000:
 		var chi: int = p.chi_deve()
 		if chi >= 0 and p.s["giocatori"][chi]["tipo"] == "rete":
 			var pk: Dictionary = p.pacchetto()
 			var id := IA.scegli(p.s, 1)
 			p.mossa_remota({"id": id, "p": chi, "n": pk["n"]}, p.s["giocatori"][chi]["uid"])
 		await create_timer(0.03).timeout
-		if int(p.s["round"]) == 2 and not fatto:
+		if int(p.s["round"]) == 4 and not fatto:
 			fatto = true
+			var g0: Dictionary = p.s["giocatori"][0]
+			g0["diari"][0]["slot"][0] = "Arte"
+			g0["diari"][0]["slot"][3] = "Storia"
+			g0["diari"][1]["slot"][6] = "t:%s_2" % g0["diari"][1]["id"].substr(2)
+			g0["diari"][1]["slot"][7] = "a:Roma_0"
+			p._aggiorna()
 			await _foto(dir, "1_tavolo")
 			p._viaggiatore(1)
 			await create_timer(0.2).timeout

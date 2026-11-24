@@ -281,45 +281,60 @@ func _segnapunti() -> void:
 			if int(gg["pv"]) >= 100:
 				Stile.testo_centrato(self, Stile.grassetto(), "+%d" % (int(gg["pv"]) / 100 * 100), r.get_center() + Vector2(0, 26), 16, Color.WHITE, Color(0, 0, 0, 0.9))
 
-## percorso di ogni Viaggiatore Celebre nei cinque round, con il numero del round su ogni tappa
+## percorso di ogni Viaggiatore Celebre nei cinque round lungo le strade del tabellone, con i numeri dei round
+## in un riquadro accanto a ogni città di tappa
 func _percorsi() -> void:
 	var D := Dati.d()
 	var r := int(s["round"])
-	var spost := [Vector2(-16, 10), Vector2(0, -14), Vector2(16, 10)]
+	var spost := [Vector2(-7, -7), Vector2(0, 0), Vector2(7, 7)]
+	# prima le linee (sotto), poi i numeri
 	for col in 3:
 		if vg_sel >= 0 and vg_sel != col:
 			continue
 		var citta: Array = D["gazzetta"][s["gazzetta"]]["citta"][col]
 		var col_c: Color = COL_VG[col]
-		var pts: Array = []
-		for i in 5:
-			var n: String = citta[i]
-			pts.append(Vector2(D["nodi"][n][0], D["nodi"][n][1]) + spost[col] * 1.6)
 		for i in 4:
-			if pts[i].distance_to(pts[i + 1]) < 4:
+			if citta[i] == citta[i + 1]:
 				continue
-			var a := 0.9 if i + 1 >= r else 0.35
+			var nodi := Dati.strada(citta[i], citta[i + 1], 9)
+			var pts := PackedVector2Array()
+			for n in nodi:
+				pts.append(Vector2(D["nodi"][n][0], D["nodi"][n][1]) + spost[col])
+			var a := 0.95 if i + 1 >= r else 0.3
 			var w := 7.0 if vg_sel == col else 5.0
-			draw_line(pts[i], pts[i + 1], Color(0, 0, 0, 0.45 * a), w + 4, true)
-			draw_line(pts[i], pts[i + 1], Color(col_c, a), w, true)
-			# freccia a metà strada
-			var m: Vector2 = (pts[i] + pts[i + 1]) / 2
-			var dir: Vector2 = (pts[i + 1] - pts[i]).normalized()
+			draw_polyline(pts, Color(0, 0, 0, 0.4 * a), w + 4, true)
+			draw_polyline(pts, Color(col_c, a), w, true)
+			# freccia sull'ultimo tratto, prima della città d'arrivo
+			var p1: Vector2 = pts[pts.size() - 2]
+			var p2: Vector2 = pts[pts.size() - 1]
+			var m := p1.lerp(p2, 0.55)
+			var dir := (p2 - p1).normalized()
 			var nrm := Vector2(-dir.y, dir.x)
-			draw_colored_polygon(PackedVector2Array([m + dir * 14, m - dir * 8 + nrm * 10, m - dir * 8 - nrm * 10]), Color(col_c, a))
+			draw_colored_polygon(PackedVector2Array([m + dir * 16, m - dir * 8 + nrm * 11, m - dir * 8 - nrm * 11]), Color(col_c, a))
+	# numeri dei round: per ogni città un riquadro con i round di ogni viaggiatore
+	var tappe := {}
+	for col in 3:
+		if vg_sel >= 0 and vg_sel != col:
+			continue
+		var citta2: Array = D["gazzetta"][s["gazzetta"]]["citta"][col]
 		for i in 5:
-			var att := i + 1 == r
-			var passato := i + 1 < r
-			var rr := 19.0 if att else 15.0
-			var q: Vector2 = pts[i] + Vector2(0, -2) + Vector2(i * 0.0, 0)
-			# se più tappe coincidono, scosta i numeri
-			var dup := 0
-			for j in i:
-				if pts[j].distance_to(pts[i]) < 4:
-					dup += 1
-			q += Vector2(dup * 24, -dup * 8)
-			draw_circle(q, rr + 2.5, Color(0, 0, 0, 0.6 if not passato else 0.25))
-			draw_circle(q, rr, Color(col_c, 1.0 if not passato else 0.4))
+			var c: String = citta2[i]
+			if not tappe.has(c): tappe[c] = []
+			tappe[c].append([col, i])
+	for c in tappe:
+		var lista: Array = tappe[c]
+		var base := Vector2(D["nodi"][c][0], D["nodi"][c][1]) + Vector2(0, 40)
+		var rr := 15.0
+		var larg := lista.size() * (rr * 2 + 4)
+		var x0 := base.x - larg / 2 + rr + 2
+		draw_rect(Rect2(Vector2(x0 - rr - 5, base.y - rr - 5), Vector2(larg + 6, rr * 2 + 10)), Color(0.12, 0.08, 0.05, 0.75))
+		for k in lista.size():
+			var col2: int = lista[k][0]
+			var i2: int = lista[k][1]
+			var q := Vector2(x0 + k * (rr * 2 + 4), base.y)
+			var att := i2 + 1 == r
+			var passato := i2 + 1 < r
+			draw_circle(q, rr, Color(COL_VG[col2], 0.45 if passato else 1.0))
 			if att:
-				draw_arc(q, rr + 6, 0, TAU, 32, Color(1, 0.9, 0.5, 0.95), 3, true)
-			Stile.testo_centrato(self, Stile.titolo(), ROMANI[i], q + Vector2(0, -1), 18 if att else 15, Color(1, 1, 1, 1.0 if not passato else 0.6))
+				draw_arc(q, rr + 3, 0, TAU, 28, Color(1, 0.9, 0.5), 3, true)
+			Stile.testo_centrato(self, Stile.titolo(), ROMANI[i2], q + Vector2(0, -1), 15 if i2 < 3 else 13, Color(1, 1, 1, 0.6 if passato else 1.0))

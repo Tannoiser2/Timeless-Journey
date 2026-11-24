@@ -36,6 +36,39 @@ static func avanzata(num: int) -> Dictionary:
 static func viaggiatore(id: String) -> Dictionary:
 	return d()["viaggiatori"][id]
 
+## strada più breve fra due luoghi (meno tappe, poi meno monete): elenco dei nodi da a a b compresi
+static func strada(a: String, b: String, peso_nave := 1) -> Array:
+	if a == b:
+		return [a]
+	var dist := {a: [0, 0]}
+	var prima := {}
+	var coda := [a]
+	while not coda.is_empty():
+		# coda con priorità semplice: prendi il nodo con distanza minore
+		var mi := 0
+		for i in coda.size():
+			var x: Array = dist[coda[i]]
+			var y: Array = dist[coda[mi]]
+			if x[0] < y[0] or (x[0] == y[0] and x[1] < y[1]):
+				mi = i
+		var n: String = coda[mi]
+		coda.remove_at(mi)
+		if n == b:
+			break
+		for v in vicini(n):
+			var nd: Array = [dist[n][0] + (peso_nave if v[2] == "nave" else 1), dist[n][1] + int(v[1])]
+			if not dist.has(v[0]) or nd[0] < dist[v[0]][0] or (nd[0] == dist[v[0]][0] and nd[1] < dist[v[0]][1]):
+				dist[v[0]] = nd
+				prima[v[0]] = n
+				if not coda.has(v[0]):
+					coda.append(v[0])
+	var out: Array = [b]
+	var k := b
+	while prima.has(k):
+		k = prima[k]
+		out.push_front(k)
+	return out
+
 ## distanza in passi lungo le strade (Lady Blessington)
 static func distanza(a: String, b: String) -> int:
 	if a == b:

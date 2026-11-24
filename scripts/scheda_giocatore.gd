@@ -36,16 +36,17 @@ func _draw() -> void:
 	Stile.meeple(self, Vector2(30, 40) * u, 56 * u, col)
 	var nome: String = gg["nome"]
 	draw_string(Stile.grassetto(), Vector2(60 * u, 30 * u), nome, HORIZONTAL_ALIGNMENT_LEFT, size.x - 150 * u, int(24 * u), Stile.INCHIOSTRO)
-	var sotto := {"rete": "telefono", "ia": "computer", "umano": "qui"}.get(gg["tipo"], "")
+	var sotto: String = {"rete": "telefono", "ia": "computer", "umano": "qui"}.get(gg["tipo"], "")
 	if p == int(s.get("primo", 0)) and not s["solo"]:
-		sotto += ", primo giocatore"
-	draw_string(Stile.testo(), Vector2(60 * u, 52 * u), sotto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 150 * u, int(16 * u), Stile.INCHIOSTRO_DEBOLE)
+		sotto += ", primo"
+
+	draw_string(Stile.testo(), Vector2(60 * u, 52 * u), sotto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 66 * u, int(15 * u), Stile.INCHIOSTRO_DEBOLE)
 	draw_string(Stile.grassetto(), Vector2(size.x - 100 * u, 38 * u), "%d PV" % int(gg["pv"]), HORIZONTAL_ALIGNMENT_RIGHT, 92 * u, int(30 * u), Color("7a2a14"))
 	# risorse
-	var y := 72 * u
-	var x := 10 * u
-	var ic := 30 * u
-	var passo := (size.x - 20 * u) / 7.0
+	var y := 66 * u
+	var x := 8 * u
+	var ic := 26 * u
+	var passo := (size.x - 16 * u) / 7.0
 	var voci := [["res://assets/img/segnalini/moneta1.webp", int(gg["monete"])]]
 	for ge in Dati.GENERI:
 		voci.append(["res://assets/img/segnalini/idea_%s.webp" % ge.to_lower(), int(gg["idee"][ge])])
@@ -53,38 +54,58 @@ func _draw() -> void:
 	voci.append(["res://assets/img/segnalini/caffe_%s.webp" % gg["colore"], int(gg["caffe"])])
 	for v in voci:
 		draw_texture_rect(Stile.tex(v[0]), Rect2(Vector2(x, y), Vector2(ic, ic)), false)
-		draw_string(Stile.grassetto(), Vector2(x + ic + 1, y + ic * 0.78), str(v[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(19 * u), Stile.INCHIOSTRO)
+		draw_string(Stile.grassetto(), Vector2(x + ic + 1, y + ic * 0.8), str(v[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(18 * u), Stile.INCHIOSTRO)
 		x += passo
-	y += ic + 8 * u
-	# carte giocate nel round
+	y += ic + 6 * u
+	# a destra le carte giocate nel round (in colonna), a sinistra i due Diari di Viaggio veri
 	var area: Array = gg["area"]
-	draw_string(Stile.testo(), Vector2(10 * u, y + 16 * u), "Giocate (%d/5), in mano %d" % [area.size(), gg["mano"].size()], HORIZONTAL_ALIGNMENT_LEFT, size.x - 20 * u, int(16 * u), Stile.INCHIOSTRO)
-	y += 22 * u
-	var ch := clampf(size.y - y - 70 * u, 40, 110 * u)
-	var cw := ch * 2.0 / 3.0
+	var spazio := size.y - y - 6
+	var cw := clampf(size.x * 0.15, 30, 56)
+	var ch := minf(cw * 1.5, (spazio - 4 * 3) / 5.0)
+	cw = ch / 1.5
+	var xc := size.x - cw - 6
 	for i in area.size():
 		var a: Dictionary = area[i]
 		var path: String = "res://assets/img/carte/retro.webp" if a["giu"] else Motore.info(a["id"])["img"]
-		var cr := Rect2(Vector2(10 * u + i * (cw + 4), y), Vector2(cw, ch))
-		if cr.end.x > size.x - 4:
-			break
-		draw_texture_rect(Stile.tex(path), cr, false)
-	y += ch + 6 * u
-	# tessere, diari, esperienze
-	var dd: Array = []
-	for d in gg["diari"]:
-		var k := 0
-		for v2 in d["slot"]:
-			if v2 != null: k += 1
-		dd.append("%s %d/8" % [String(d["id"]).substr(2), k])
-	var riga := "Tessere %d  Amici %d  Esperienze %d" % [gg["tessere"].size(), gg["amici"].size(), gg["esp"].size()]
-	draw_string(Stile.testo(), Vector2(10 * u, y + 16 * u), riga, HORIZONTAL_ALIGNMENT_LEFT, size.x - 20 * u, int(16 * u), Stile.INCHIOSTRO)
-	y += 20 * u
-	if y + 16 * u < size.y:
-		draw_string(Stile.testo(), Vector2(10 * u, y + 16 * u), "Diari: " + ", ".join(dd), HORIZONTAL_ALIGNMENT_LEFT, size.x - 20 * u, int(16 * u), Stile.INCHIOSTRO)
-	y += 20 * u
-	if s["esp"]["napoleone"] and y + 16 * u < size.y:
-		draw_string(Stile.testo(), Vector2(10 * u, y + 16 * u), "Soldati %d  Pattuglie %d" % [int(gg["soldati"]), gg["pattuglie"].size()], HORIZONTAL_ALIGNMENT_LEFT, size.x - 20 * u, int(16 * u), Stile.INCHIOSTRO)
+		draw_texture_rect(Stile.tex(path), Rect2(Vector2(xc, y + i * (ch + 3)), Vector2(cw, ch)), false)
+	for i in range(area.size(), 5):
+		draw_rect(Rect2(Vector2(xc, y + i * (ch + 3)), Vector2(cw, ch)), Color(0.45, 0.35, 0.25, 0.35), false, 1.5)
+	var wd := xc - 14
+	var hd := minf(wd * 1065.0 / 2010.0, (spazio - 6) / 2.0)
+	wd = hd * 2010.0 / 1065.0
+	for di in 2:
+		var r2 := Rect2(Vector2(8, y + di * (hd + 6)), Vector2(wd, hd))
+		_diario(gg, di, r2)
+	# tra i Diari e le carte giocate: tessere, amici, esperienze, carte in mano
+	var xs := 8 + wd + 8
+	var righe := ["Tessere %d" % gg["tessere"].size(), "Amici %d" % gg["amici"].size(), "Esperienze %d" % gg["esp"].size(), "In mano %d" % gg["mano"].size()]
+	if s["esp"]["napoleone"]:
+		righe.append("Soldati %d" % int(gg["soldati"]))
+	var dim := int(clampf(15 * u, 12, 19))
+	if xc - xs >= Stile.testo().get_string_size("Esperienze 5", HORIZONTAL_ALIGNMENT_LEFT, -1, dim).x + 4:
+		for i in righe.size():
+			draw_string(Stile.testo(), Vector2(xs, y + 18 + i * (dim + 8)), righe[i], HORIZONTAL_ALIGNMENT_LEFT, xc - xs - 2, dim, Stile.INCHIOSTRO)
+	elif y + 2 * hd + 6 + dim + 4 < size.y:
+		draw_string(Stile.testo(), Vector2(8, y + 2 * hd + 6 + dim + 2), ", ".join(righe), HORIZONTAL_ALIGNMENT_LEFT, xc - 12, dim, Stile.INCHIOSTRO)
+
+const POS_DIARIO := [[0.61, 0.31], [0.74, 0.31], [0.87, 0.31], [0.61, 0.66], [0.74, 0.66], [0.87, 0.66], [0.164, 0.31], [0.366, 0.64]]
+
+func _diario(gg: Dictionary, di: int, r: Rect2) -> void:
+	var d: Dictionary = gg["diari"][di]
+	draw_texture_rect(Stile.tex("res://assets/img/diari/%s.webp" % d["id"]), r, false)
+	var u := r.size.x / 500.0
+	for k in 8:
+		var v = d["slot"][k]
+		if v == null:
+			continue
+		var c := r.position + Vector2(POS_DIARIO[k][0], POS_DIARIO[k][1]) * r.size
+		var sv: String = v
+		if sv.begins_with("t:"):
+			draw_texture_rect(Stile.tex("res://assets/img/tessere/espl_%s.webp" % sv.substr(2)), Rect2(c - Vector2(36, 36) * u, Vector2(72, 72) * u), false)
+		elif sv.begins_with("a:"):
+			draw_texture_rect(Stile.tex("res://assets/img/tessere/amico_%s.webp" % sv.substr(2)), Rect2(c - Vector2(30, 50) * u, Vector2(60, 100) * u), false)
+		else:
+			draw_texture_rect(Stile.tex("res://assets/img/segnalini/idea_%s.webp" % sv.to_lower()), Rect2(c - Vector2(30, 30) * u, Vector2(60, 60) * u), false)
 
 func _automi() -> void:
 	var r := Rect2(Vector2.ZERO, size)

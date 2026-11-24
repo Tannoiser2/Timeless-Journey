@@ -108,10 +108,10 @@ static func valore(s: Dictionary, p: int) -> float:
 				potenziali += 1
 		var att := float(D["tab_diari"][k])
 		var pot := float(D["tab_diari"][mini(8, k + potenziali)])
-		v += att + (pot - att) * 0.6
+		v += att * 1.15 + (pot - att) * 0.35
 	for ge in Dati.GENERI:
 		idee_avanzo += int(pronti_idee[ge])
-	v += idee_avanzo * 0.7 + amici_liberi * 0.3
+	v += idee_avanzo * 0.55 + amici_liberi * 0.3
 	# monete
 	var mon: int = int(gg["monete"])
 	v += minf(mon, 8) * 0.5 + maxf(0, mon - 8) * 0.15
